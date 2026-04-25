@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Search, LogOut } from 'lucide-react'
+import { Search, LogOut, User } from 'lucide-react'
 import { useState } from 'react'
 
 export default function Navbar() {
@@ -87,6 +87,14 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Profile */}
+        <button
+          onClick={() => router.push('/profile')}
+          className="text-zinc-300 hover:text-white transition"
+        >
+          <User className="w-5 h-5" />
+        </button>
 
         {/* Logout */}
         <button

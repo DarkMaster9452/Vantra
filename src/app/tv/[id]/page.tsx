@@ -6,6 +6,7 @@ import { TMDB_IMAGE_BASE, TMDBEpisode } from '@/lib/tmdb'
 import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { Play } from 'lucide-react'
+import WatchlistButton from '@/components/media/WatchlistButton'
 
 export default function TVDetailPage() {
   const params = useParams()
@@ -19,7 +20,6 @@ export default function TVDetailPage() {
   const [episodes, setEpisodes] = useState<TMDBEpisode[]>([])
   const [episodesLoading, setEpisodesLoading] = useState(false)
 
-  // Načítaj detail show
   useEffect(() => {
     const fetchShow = async () => {
       try {
@@ -35,7 +35,6 @@ export default function TVDetailPage() {
     fetchShow()
   }, [id])
 
-  // Načítaj epizódy keď sa zmení sezóna
   useEffect(() => {
     if (!show) return
     const fetchEpisodes = async () => {
@@ -58,7 +57,6 @@ export default function TVDetailPage() {
     router.push(`/watch/tv/${id}?season=${selectedSeason}&episode=${selectedEpisode}`)
   }
 
-  // Zistí či epizóda už vyšla
   const isAired = (airDate: string | null) => {
     if (!airDate) return false
     return new Date(airDate) <= new Date()
@@ -181,14 +179,25 @@ export default function TVDetailPage() {
               )}
             </div>
 
-            {/* Play tlačidlo */}
-            <button
-              onClick={handlePlay}
-              className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
-            >
-              <Play className="w-5 h-5 fill-black" />
-              Play S{selectedSeason}E{selectedEpisode}
-            </button>
+            {/* Tlačidlá */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePlay}
+                className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
+              >
+                <Play className="w-5 h-5 fill-black" />
+                Play S{selectedSeason}E{selectedEpisode}
+              </button>
+
+              {show && (
+                <WatchlistButton
+                  tmdbId={parseInt(id)}
+                  mediaType="tv"
+                  title={show.name}
+                  posterPath={show.poster_path || ''}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

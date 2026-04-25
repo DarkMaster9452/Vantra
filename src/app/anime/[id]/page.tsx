@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getAnimeDetail, getAnimeEpisodes } from '@/lib/anilist'
 import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { Play } from 'lucide-react'
+import WatchlistButton from '@/components/media/WatchlistButton'
 
 export default function AnimeDetailPage() {
   const params = useParams()
@@ -17,25 +17,25 @@ export default function AnimeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [selectedEpisode, setSelectedEpisode] = useState(1)
 
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const [animeRes, epRes] = await Promise.all([
-        fetch(`/api/anilist?type=detail&id=${id}`),
-        fetch(`/api/anilist?type=episodes&id=${id}`),
-      ])
-      const animeData = await animeRes.json()
-      const epData = await epRes.json()
-      setAnime(animeData)
-      setEpisodeData(epData)
-    } catch {
-      console.error('Failed to fetch anime')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [animeRes, epRes] = await Promise.all([
+          fetch(`/api/anilist?type=detail&id=${id}`),
+          fetch(`/api/anilist?type=episodes&id=${id}`),
+        ])
+        const animeData = await animeRes.json()
+        const epData = await epRes.json()
+        setAnime(animeData)
+        setEpisodeData(epData)
+      } catch {
+        console.error('Failed to fetch anime')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
-  fetchData()
-}, [id])
+    fetchData()
+  }, [id])
 
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
@@ -52,13 +52,11 @@ useEffect(() => {
   const nextAiring = episodeData?.nextAiringEpisode?.episode || null
   const description = anime.description?.replace(/<[^>]*>/g, '') || 'No description available.'
 
-  // Zistí či epizóda už vyšla
   const isEpisodeAired = (epNumber: number) => {
-    if (!nextAiring) return true // ak nie je info, predpokladáme že všetky vyšli
+    if (!nextAiring) return true
     return epNumber < nextAiring
   }
 
-  // Získa dátum epizódy z airing schedule
   const getEpisodeDate = (epNumber: number) => {
     const schedule = episodeData?.airingSchedule?.nodes?.find(
       (n: any) => n.episode === epNumber
@@ -72,9 +70,9 @@ useEffect(() => {
   }
 
   const handlePlay = () => {
-  const malId = anime.idMal
-  router.push(`/watch/anime/${malId}?episode=${selectedEpisode}&anilistId=${id}`)
- }
+    const malId = anime.idMal
+    router.push(`/watch/anime/${malId}?episode=${selectedEpisode}&anilistId=${id}`)
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -162,14 +160,25 @@ useEffect(() => {
               </select>
             </div>
 
-            {/* Play tlačidlo */}
-            <button
-              onClick={handlePlay}
-              className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
-            >
-              <Play className="w-5 h-5 fill-black" />
-              Play Episode {selectedEpisode}
-            </button>
+            {/* Tlačidlá */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePlay}
+                className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
+              >
+                <Play className="w-5 h-5 fill-black" />
+                Play Episode {selectedEpisode}
+              </button>
+
+              {anime && (
+                <WatchlistButton
+                  tmdbId={id}
+                  mediaType="anime"
+                  title={title}
+                  posterPath={anime.coverImage.large || ''}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

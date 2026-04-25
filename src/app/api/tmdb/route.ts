@@ -9,6 +9,7 @@ import {
   searchMedia,
   getTVDetail,
   getSeasonDetail,
+  getMovieDetail,
 } from '@/lib/tmdb'
 
 export async function GET(request: NextRequest) {
@@ -47,6 +48,10 @@ export async function GET(request: NextRequest) {
       case 'search':
         if (!query) return NextResponse.json({ error: 'No query' }, { status: 400 })
         data = await searchMedia(query)
+        break
+      case 'movie-detail':
+        if (!id) return NextResponse.json({ error: 'No id' }, { status: 400 })
+        data = await getMovieDetail(parseInt(id))
         break
       case 'tv-detail':
         if (!id) return NextResponse.json({ error: 'No id' }, { status: 400 })

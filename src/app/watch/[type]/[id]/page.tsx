@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { useHistory } from '@/hooks/useHistory'
 
 interface Provider {
   name: string
@@ -13,6 +14,7 @@ export default function WatchPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { addToHistory } = useHistory()
 
   const type = params.type as string
   const id = params.id as string
@@ -32,6 +34,20 @@ export default function WatchPage() {
         const data = await res.json()
         setProviders(data.providers)
         setActiveProvider(data.primary)
+
+        // Pridaj do histórie
+        const tmdbRes = await fetch(`/api/tmdb?type=${type === 'movie' ? 'movie-detail' : 'tv-detail'}&id=${id}`)
+        if (tmdbRes.ok) {
+          const tmdbData = await tmdbRes.json()
+          await addToHistory(
+            parseInt(id),
+            type,
+            tmdbData.title || tmdbData.name || 'Unknown',
+            tmdbData.poster_path || '',
+            type === 'tv' ? parseInt(season) : undefined,
+            type === 'tv' ? parseInt(episode) : undefined
+          )
+        }
       } catch {
         console.error('Failed to fetch stream')
       } finally {
@@ -54,7 +70,6 @@ export default function WatchPage() {
           Back
         </button>
 
-        {/* Provider prepínanie */}
         <div className="flex items-center gap-2">
           <span className="text-zinc-500 text-sm">Source:</span>
           {providers.map((provider) => (

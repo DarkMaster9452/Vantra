@@ -5,6 +5,7 @@ import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { Play } from 'lucide-react'
 import Link from 'next/link'
+import WatchlistButton from '@/components/media/WatchlistButton'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -21,7 +22,6 @@ export default async function MovieDetailPage({ params }: Props) {
   const runtime = movie.runtime
     ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
     : 'N/A'
-
   const year = movie.release_date?.slice(0, 4) || 'N/A'
   const rating = movie.vote_average?.toFixed(1) || 'N/A'
 
@@ -79,14 +79,23 @@ export default async function MovieDetailPage({ params }: Props) {
               {movie.overview}
             </p>
 
-            {/* Play tlačidlo */}
-            <Link
-              href={`/watch/movie/${movie.id}`}
-              className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
-            >
-              <Play className="w-5 h-5 fill-black" />
-              Play
-            </Link>
+            {/* Tlačidlá */}
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/watch/movie/${movie.id}`}
+                className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
+              >
+                <Play className="w-5 h-5 fill-black" />
+                Play
+              </Link>
+
+              <WatchlistButton
+                tmdbId={movie.id}
+                mediaType="movie"
+                title={movie.title}
+                posterPath={movie.poster_path || ''}
+              />
+            </div>
           </div>
         </div>
       </div>
