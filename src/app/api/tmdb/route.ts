@@ -25,19 +25,20 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('query')
   const id = searchParams.get('id')
   const season = searchParams.get('season')
+  const page = parseInt(searchParams.get('page') || '1')
 
   try {
     let data
 
     switch (type) {
       case 'trending':
-        data = await getTrending()
+        data = await getTrending(page)
         break
       case 'popular-movies':
-        data = await getPopularMovies()
+        data = await getPopularMovies(page)
         break
       case 'popular-tv':
-        data = await getPopularTV()
+        data = await getPopularTV(page)
         break
       case 'top-rated-movies':
         data = await getTopRatedMovies()
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
         break
       case 'search':
         if (!query) return NextResponse.json({ error: 'No query' }, { status: 400 })
-        data = await searchMedia(query)
+        data = await searchMedia(query, page)
         break
       case 'movie-detail':
         if (!id) return NextResponse.json({ error: 'No id' }, { status: 400 })

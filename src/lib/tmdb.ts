@@ -3,9 +3,10 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY!
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
 // Helper funkcia pre všetky TMDB requesty
-async function tmdbFetch(endpoint: string) {
+async function tmdbFetch(endpoint: string, page: number = 1) {
+  const separator = endpoint.includes('?') ? '&' : '?'
   const res = await fetch(
-    `${TMDB_BASE_URL}${endpoint}&api_key=${TMDB_API_KEY}`,
+    `${TMDB_BASE_URL}${endpoint}${separator}api_key=${TMDB_API_KEY}&page=${page}`,
     { next: { revalidate: 3600 } }
   )
   if (!res.ok) throw new Error(`TMDB fetch failed: ${endpoint}`)
@@ -13,18 +14,18 @@ async function tmdbFetch(endpoint: string) {
 }
 
 // Trending filmy a seriály (týždenné)
-export async function getTrending() {
-  return tmdbFetch('/trending/all/week?language=en-US')
+export async function getTrending(page: number = 1) {
+  return tmdbFetch('/trending/all/week?language=en-US', page)
 }
 
 // Populárne filmy
-export async function getPopularMovies() {
-  return tmdbFetch('/movie/popular?language=en-US')
+export async function getPopularMovies(page: number = 1) {
+  return tmdbFetch('/movie/popular?language=en-US', page)
 }
 
 // Populárne seriály
-export async function getPopularTV() {
-  return tmdbFetch('/tv/popular?language=en-US')
+export async function getPopularTV(page: number = 1) {
+  return tmdbFetch('/tv/popular?language=en-US', page)
 }
 
 // Top rated filmy
@@ -37,14 +38,12 @@ export async function getTopRatedTV() {
   return tmdbFetch('/tv/top_rated?language=en-US')
 }
 
-// Detail filmu
 export async function getMovieDetail(id: number) {
-  return tmdbFetch(`/movie/${id}?language=en-US&append_to_response=credits,videos`)
+  return tmdbFetch(`/movie/${id}?language=en-US&append_to_response=credits,videos,images,similar&include_image_language=en,null`)
 }
 
-// Detail seriálu
 export async function getTVDetail(id: number) {
-  return tmdbFetch(`/tv/${id}?language=en-US&append_to_response=credits,videos`)
+  return tmdbFetch(`/tv/${id}?language=en-US&append_to_response=credits,videos,images,similar&include_image_language=en,null`)
 }
 
 // Detail sezóny (epizódy s dátumami)
@@ -53,8 +52,8 @@ export async function getSeasonDetail(tvId: number, seasonNumber: number) {
 }
 
 // Vyhľadávanie
-export async function searchMedia(query: string) {
-  return tmdbFetch(`/search/multi?language=en-US&query=${encodeURIComponent(query)}`)
+export async function searchMedia(query: string, page: number = 1) {
+  return tmdbFetch(`/search/multi?language=en-US&query=${encodeURIComponent(query)}`, page)
 }
 
 // Typy
@@ -71,6 +70,9 @@ export interface TMDBMedia {
   first_air_date?: string
   media_type?: string
   genre_ids?: number[]
+  images?: {
+    logos: { file_path: string }[]
+  }
 }
 
 export interface TMDBEpisode {
@@ -78,4 +80,12 @@ export interface TMDBEpisode {
   name: string
   air_date: string | null
   overview: string
+}
+// Similar movies/shows
+export async function getSimilarMovies(id: number) {
+  return tmdbFetch(`/movie/${id}/similar?language=en-US`)
+}
+
+export async function getSimilarTV(id: number) {
+  return tmdbFetch(`/tv/${id}/similar?language=en-US`)
 }

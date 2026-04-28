@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MediaCard from '@/components/media/MediaCard'
@@ -14,36 +14,61 @@ export default function BrowsePage() {
 
   const [items, setItems] = useState<TMDBMedia[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [query, setQuery] = useState(searchQuery)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        let url = ''
+  const fetchData = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (reset) setLoading(true)
+    else setLoadingMore(true)
 
-        if (searchQuery) {
-          url = `/api/tmdb?type=search&query=${encodeURIComponent(searchQuery)}`
-        } else if (typeFilter === 'movie') {
-          url = `/api/tmdb?type=popular-movies`
-        } else if (typeFilter === 'tv') {
-          url = `/api/tmdb?type=popular-tv`
-        } else {
-          url = `/api/tmdb?type=trending`
-        }
+    try {
+      let url = ''
 
-        const res = await fetch(url)
-        const data = await res.json()
-        setItems(data.results || [])
-      } catch {
-        console.error('Failed to fetch')
-      } finally {
-        setLoading(false)
+      if (searchQuery) {
+        url = `/api/tmdb?type=search&query=${encodeURIComponent(searchQuery)}&page=${pageNum}`
+      } else if (typeFilter === 'movie') {
+        url = `/api/tmdb?type=popular-movies&page=${pageNum}`
+      } else if (typeFilter === 'tv') {
+        url = `/api/tmdb?type=popular-tv&page=${pageNum}`
+      } else {
+        url = `/api/tmdb?type=trending&page=${pageNum}`
       }
-    }
 
-    fetchData()
+      const res = await fetch(url)
+      const data = await res.json()
+      const results = data.results || []
+
+      if (reset) {
+        setItems(results)
+      } else {
+        setItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id))
+          const newItems = results.filter((item: TMDBMedia) => !existingIds.has(item.id))
+          return [...prev, ...newItems]
+        })
+      }
+
+      setHasMore(results.length >= 20)
+    } catch {
+      console.error('Failed to fetch')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
   }, [searchQuery, typeFilter])
+
+  useEffect(() => {
+    setPage(1)
+    fetchData(1, true)
+  }, [fetchData])
+
+  const handleLoadMore = async () => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    await fetchData(nextPage, false)
+  }
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && query.trim()) {
@@ -71,7 +96,7 @@ export default function BrowsePage() {
 
         {/* Title */}
         <h1 className="text-2xl font-bold mb-6">
-          {searchQuery ? `Results for "${searchQuery}"` : 
+          {searchQuery ? `Results for "${searchQuery}"` :
            typeFilter === 'movie' ? 'Popular Movies' :
            typeFilter === 'tv' ? 'Popular TV Shows' : 'Trending'}
         </h1>
@@ -86,11 +111,26 @@ export default function BrowsePage() {
             <p className="text-zinc-400">No results found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
-            {items.map((item) => (
-              <MediaCard key={item.id} media={item} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+              {items.map((item, index) => (
+                <MediaCard key={`${item.id}-${index}`} media={item} />
+              ))}
+            </div>
+
+            {/* Load More */}
+            {hasMore && (
+              <div className="flex justify-center mt-10">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-8 py-3 rounded-lg transition disabled:opacity-50"
+                >
+                  {loadingMore ? 'Loading...' : 'Load More'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

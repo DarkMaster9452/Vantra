@@ -39,7 +39,10 @@ export default function AnimeDetailPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      <p className="text-white">Loading...</p>
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-zinc-400">Loading...</p>
+      </div>
     </div>
   )
 
@@ -69,13 +72,13 @@ export default function AnimeDetailPage() {
     return null
   }
 
-  const handlePlay = () => {
+  const handlePlay = (episode?: number) => {
     const malId = anime.idMal
-    router.push(`/watch/anime/${malId}?episode=${selectedEpisode}&anilistId=${id}`)
+    router.push(`/watch/anime/${malId}?episode=${episode || selectedEpisode}&anilistId=${id}`)
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white fade-in">
       <Navbar />
 
       {/* Backdrop */}
@@ -93,13 +96,14 @@ export default function AnimeDetailPage() {
           <div className="w-full h-full bg-zinc-900" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 -mt-32 px-4 md:px-8 pb-16">
         <div className="flex gap-8">
           {/* Poster */}
-          <div className="hidden md:block flex-shrink-0 w-48 h-72 relative rounded-lg overflow-hidden">
+          <div className="hidden md:block flex-shrink-0 w-48 h-72 relative rounded-xl overflow-hidden shadow-2xl shadow-black/50 border border-zinc-800">
             <Image
               src={anime.coverImage.extraLarge || anime.coverImage.large}
               alt={title}
@@ -113,61 +117,41 @@ export default function AnimeDetailPage() {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-4xl font-bold">{title}</h1>
-              <span className="bg-purple-600 text-white text-sm font-bold px-3 py-1 rounded">
+              <span className="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded-lg">
                 ANIME
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-sm text-zinc-400 mb-4">
-              <span className="text-yellow-400 font-semibold">★ {rating}</span>
+            <div className="flex items-center gap-3 text-sm text-zinc-400 mb-4 flex-wrap">
+              <span className="text-red-500 font-bold">★ {rating}</span>
               <span>{year}</span>
-              {anime.episodes && <span>{anime.episodes} episodes</span>}
-              <span className="capitalize">{anime.status?.toLowerCase()}</span>
+              {anime.episodes && (
+                <span className="border border-zinc-700 px-2 py-0.5 rounded text-xs">
+                  {anime.episodes} episodes
+                </span>
+              )}
+              <span className="capitalize border border-zinc-700 px-2 py-0.5 rounded text-xs">
+                {anime.status?.toLowerCase()}
+              </span>
               {anime.genres?.slice(0, 3).map((g: string) => (
-                <span key={g} className="bg-zinc-800 px-2 py-1 rounded text-xs">
+                <span key={g} className="bg-zinc-800 px-2 py-1 rounded-md text-xs border border-zinc-700">
                   {g}
                 </span>
               ))}
             </div>
 
-            <p className="text-zinc-300 max-w-2xl mb-6 leading-relaxed">
+            <p className="text-zinc-300 max-w-2xl mb-6 leading-relaxed text-sm md:text-base">
               {description}
             </p>
 
-            {/* Episode výber */}
-            <div className="mb-6">
-              <label className="text-zinc-400 text-sm block mb-2">Episode</label>
-              <select
-                value={selectedEpisode}
-                onChange={(e) => setSelectedEpisode(parseInt(e.target.value))}
-                className="bg-zinc-800 text-white px-3 py-2 rounded border border-zinc-700 focus:outline-none max-w-sm"
-              >
-                {Array.from({ length: totalEpisodes }, (_, i) => {
-                  const epNum = i + 1
-                  const aired = isEpisodeAired(epNum)
-                  const date = getEpisodeDate(epNum)
-
-                  return (
-                    <option
-                      key={epNum}
-                      value={epNum}
-                      disabled={!aired}
-                    >
-                      {aired ? '✓' : '○'} Episode {epNum}{date ? ` — ${date}` : ''}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-
             {/* Tlačidlá */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-8">
               <button
-                onClick={handlePlay}
-                className="inline-flex items-center gap-2 bg-white text-black font-bold px-8 py-3 rounded hover:bg-zinc-200 transition"
+                onClick={() => handlePlay(1)}
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-900/30"
               >
-                <Play className="w-5 h-5 fill-black" />
-                Play Episode {selectedEpisode}
+                <Play className="w-5 h-5 fill-white" />
+                Play E1
               </button>
 
               {anime && (
@@ -179,6 +163,68 @@ export default function AnimeDetailPage() {
                 />
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Episodes */}
+        <div className="mt-4 max-w-4xl">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="w-1 h-5 bg-red-500 rounded-full inline-block"></span>
+            Episodes
+          </h3>
+
+          <div className="space-y-2">
+            {Array.from({ length: totalEpisodes }, (_, i) => {
+              const epNum = i + 1
+              const aired = isEpisodeAired(epNum)
+              const date = getEpisodeDate(epNum)
+              const isSelected = selectedEpisode === epNum
+
+              return (
+                <div
+                  key={epNum}
+                  onClick={() => aired && setSelectedEpisode(epNum)}
+                  className={`flex gap-4 p-3 rounded-xl border transition-all duration-200 ${
+                    !aired
+                      ? 'opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/30'
+                      : isSelected
+                      ? 'border-red-500/50 bg-red-950/20 cursor-pointer'
+                      : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 hover:bg-zinc-800/50 cursor-pointer'
+                  }`}
+                >
+                  {/* Episode number */}
+                  <div className="flex-shrink-0 w-32 h-20 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                    <span className="text-zinc-400 text-2xl font-bold">{epNum}</span>
+                  </div>
+
+                  {/* Episode info */}
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-white font-medium text-sm">
+                        Episode {epNum}
+                      </p>
+                      {date && <p className="text-zinc-500 text-xs mt-0.5">{date}</p>}
+                      {!aired && !date && (
+                        <p className="text-zinc-600 text-xs mt-0.5">TBA</p>
+                      )}
+                    </div>
+
+                    {aired ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handlePlay(epNum) }}
+                        className="flex-shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors duration-200"
+                      >
+                        Play
+                      </button>
+                    ) : (
+                      <span className="flex-shrink-0 text-zinc-600 text-xs border border-zinc-700 px-2 py-1 rounded-lg">
+                        Upcoming
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

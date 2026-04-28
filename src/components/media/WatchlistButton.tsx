@@ -18,10 +18,10 @@ export default function WatchlistButton({ tmdbId, mediaType, title, posterPath }
   return (
     <button
       onClick={() => toggleWatchlist(title, posterPath)}
-      className={`inline-flex items-center gap-2 font-bold px-6 py-3 rounded transition ${
+      className={`inline-flex items-center gap-2 font-bold px-6 py-3 rounded-lg transition-all duration-200 border ${
         isInWatchlist
-          ? 'bg-zinc-600 text-white hover:bg-zinc-700'
-          : 'bg-zinc-800 text-white hover:bg-zinc-700'
+          ? 'bg-red-600/20 text-red-400 border-red-500/50 hover:bg-red-600/30'
+          : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/40'
       }`}
     >
       {isInWatchlist ? (
