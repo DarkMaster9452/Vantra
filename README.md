@@ -37,7 +37,7 @@ Access is restricted via an email whitelist in Supabase. Only pre-approved addre
 - Video player with multi-provider switching
 - Watchlist and watch history (per user, persistent)
 - Profile page with avatar upload and display name
-
+![image alt](https://github.com/balusikf/Vantra/blob/main/Screenshot%202026-05-06%20172305.png?raw=true)
 ---
 
 ## What Was Not Finished
