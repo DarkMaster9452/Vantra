@@ -184,6 +184,9 @@ export default function AnimeDetailPage() {
                 <div
                   key={epNum}
                   onClick={() => aired && setSelectedEpisode(epNum)}
+                  tabIndex={aired ? 0 : -1}
+                  role="button"
+                  aria-label={`Episode ${epNum}`}
                   className={`flex gap-4 p-3 rounded-xl border transition-all duration-200 ${
                     !aired
                       ? 'opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/30'

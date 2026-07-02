@@ -275,6 +275,9 @@ export default function ProfilePage() {
                     <div
                       className="relative w-full aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg"
                       onClick={() => handleNavigate(item)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={item.title}
                     >
                       {item.poster_path ? (
                         <Image
@@ -336,6 +339,9 @@ export default function ProfilePage() {
                     key={item.id}
                     className="relative group/card cursor-pointer"
                     onClick={() => handleNavigate(item)}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={item.title}
                   >
                     <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg">
                       {item.poster_path ? (

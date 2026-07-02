@@ -32,6 +32,7 @@ export default function Carousel({ title, items }: CarouselProps) {
       <div className="relative group">
         {/* Šípka doľava */}
         <button
+          tabIndex={-1}
           onClick={() => scroll('left')}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-r border-t border-b border-zinc-800 hover:border-red-500"
         >
@@ -50,6 +51,7 @@ export default function Carousel({ title, items }: CarouselProps) {
 
         {/* Šípka doprava */}
         <button
+          tabIndex={-1}
           onClick={() => scroll('right')}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-l border-t border-b border-zinc-800 hover:border-red-500"
         >

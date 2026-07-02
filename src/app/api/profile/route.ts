@@ -10,10 +10,15 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const rows = await sql`
-    SELECT display_name, avatar_url FROM profiles WHERE id = ${user.id}
+    SELECT p.display_name, p.avatar_url, u.is_admin
+    FROM users u LEFT JOIN profiles p ON p.id = u.id
+    WHERE u.id = ${user.id}
   `
-  const profile = rows[0] ?? { display_name: null, avatar_url: null }
-  return NextResponse.json({ user: { id: user.id, email: user.email }, profile })
+  const profile = rows[0] ?? { display_name: null, avatar_url: null, is_admin: false }
+  return NextResponse.json({
+    user: { id: user.id, email: user.email, is_admin: profile.is_admin ?? false },
+    profile: { display_name: profile.display_name, avatar_url: profile.avatar_url },
+  })
 }
 
 export async function PATCH(request: NextRequest) {

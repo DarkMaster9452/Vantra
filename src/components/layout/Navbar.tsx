@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { Search, LogOut, User, X } from 'lucide-react'
+import { Search, LogOut, User, X, Shield } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
 export default function Navbar() {
@@ -10,7 +10,15 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setIsAdmin(data?.user?.is_admin === true))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -103,6 +111,16 @@ export default function Navbar() {
           >
             <Search className="w-5 h-5" />
           </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => router.push('/admin')}
+              className="text-zinc-400 hover:text-red-500 transition-colors duration-200"
+              title="Správa účtov"
+            >
+              <Shield className="w-5 h-5" />
+            </button>
+          )}
 
           <button
             onClick={() => router.push('/profile')}

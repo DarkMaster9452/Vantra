@@ -38,6 +38,18 @@ body {
   background: #f40612;
 }
 
+/* TV / klávesnicová navigácia: výrazný focus ring pre D-pad ovládanie */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Aby focusnutý prvok nezostal schovaný pod navbarom pri scrollovaní */
+a, button, input, select, textarea, [tabindex] {
+  scroll-margin: 110px 28px;
+}
+
 /* Page transitions */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
