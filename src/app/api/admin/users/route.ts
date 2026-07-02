@@ -68,6 +68,14 @@ export async function PATCH(request: NextRequest) {
     `
   }
 
+  if (typeof body.pin === 'string') {
+    if (!/^\d{4,8}$/.test(body.pin)) {
+      return NextResponse.json({ error: 'PIN must be 4-8 digits' }, { status: 400 })
+    }
+    const pinHash = bcrypt.hashSync(body.pin, 10)
+    await sql`UPDATE users SET pin_hash = ${pinHash} WHERE id = ${body.id}`
+  }
+
   return NextResponse.json({ ok: true })
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import { Trash2, KeyRound, UserPlus, Check, X, Shield } from 'lucide-react'
+import { Trash2, KeyRound, UserPlus, Check, X, Shield, Tv } from 'lucide-react'
 
 type AdminUser = {
   id: string
@@ -29,6 +29,10 @@ export default function AdminPage() {
   // Zmena hesla existujúceho účtu
   const [resetId, setResetId] = useState<string | null>(null)
   const [resetPassword, setResetPassword] = useState('')
+
+  // Zmena PIN-u (na TV prihlásenie)
+  const [pinId, setPinId] = useState<string | null>(null)
+  const [pinValue, setPinValue] = useState('')
 
   const loadUsers = async () => {
     const res = await fetch('/api/admin/users')
@@ -77,6 +81,23 @@ export default function AdminPage() {
     }
     setResetId(null)
     setResetPassword('')
+  }
+
+  const savePin = async () => {
+    if (!pinId) return
+    setError('')
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pinId, pin: pinValue }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error || 'Failed to change PIN')
+      return
+    }
+    setPinId(null)
+    setPinValue('')
   }
 
   const deleteUser = async (user: AdminUser) => {
@@ -170,10 +191,35 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => { setResetId(user.id); setResetPassword('') }}
+                  onClick={() => { setResetId(user.id); setResetPassword(''); setPinId(null) }}
                   className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm border border-zinc-800 hover:border-zinc-600 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <KeyRound className="w-4 h-4" /> Zmeniť heslo
+                </button>
+              )}
+
+              {pinId === user.id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text" placeholder="4 čísla" value={pinValue} autoFocus
+                    inputMode="numeric" maxLength={4}
+                    onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => e.key === 'Enter' && savePin()}
+                    className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-1.5 border border-red-500/50 focus:outline-none focus:border-red-500 text-sm w-24"
+                  />
+                  <button onClick={savePin} disabled={!/^\d{4}$/.test(pinValue)} className="text-green-400 hover:text-green-300 disabled:opacity-40 p-1">
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => { setPinId(null); setPinValue('') }} className="text-zinc-500 hover:text-zinc-300 p-1">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setPinId(user.id); setPinValue(''); setResetId(null) }}
+                  className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm border border-zinc-800 hover:border-zinc-600 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Tv className="w-4 h-4" /> TV PIN
                 </button>
               )}
 
