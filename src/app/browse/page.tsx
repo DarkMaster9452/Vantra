@@ -1,13 +1,22 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MediaCard from '@/components/media/MediaCard'
 import { TMDBMedia } from '@/lib/tmdb'
 import { Search } from 'lucide-react'
 
+// useSearchParams vyžaduje Suspense boundary pri produkčnom builde
 export default function BrowsePage() {
+  return (
+    <Suspense>
+      <BrowseContent />
+    </Suspense>
+  )
+}
+
+function BrowseContent() {
   const searchParams = useSearchParams()
   const searchQuery = searchParams.get('search') || ''
   const typeFilter = searchParams.get('type') || 'all'

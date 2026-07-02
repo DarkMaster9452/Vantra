@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+// URL nasadenej Vantry – pri builde sa dá prepísať: gradle assembleDebug -PvantraUrl="https://..."
+def vantraUrl = project.findProperty('vantraUrl') ?: 'https://vantra.vercel.app'
+
+android {
+    namespace 'sk.vantra.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'sk.vantra.tv'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'APP_URL', "\"${vantraUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
