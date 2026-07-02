@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb'
@@ -23,50 +22,59 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const [profileRes, watchlistRes, historyRes] = await Promise.all([
+        fetch('/api/profile'),
+        fetch('/api/watchlist'),
+        fetch('/api/history'),
+      ])
+
+      if (profileRes.status === 401) {
         router.push('/login')
         return
       }
-      setUser(user)
 
-      const [profileRes, watchlistRes, historyRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('watchlist').select('*').eq('user_id', user.id).order('added_at', { ascending: false }),
-        supabase.from('watch_history').select('*').eq('user_id', user.id).order('last_watched', { ascending: false })
-      ])
+      const profileData = await profileRes.json()
+      const watchlistData = watchlistRes.ok ? await watchlistRes.json() : { items: [] }
+      const historyData = historyRes.ok ? await historyRes.json() : { items: [] }
 
-      setProfile(profileRes.data)
-      setNewDisplayName(profileRes.data?.display_name || '')
-      setWatchlist(watchlistRes.data || [])
-      setHistory(historyRes.data || [])
+      setUser(profileData.user)
+      setProfile(profileData.profile)
+      setNewDisplayName(profileData.profile?.display_name || '')
+      setWatchlist(watchlistData.items || [])
+      setHistory(historyData.items || [])
       setLoading(false)
     }
     fetchData()
   }, [])
 
   const saveDisplayName = async () => {
-    const supabase = createClient()
-    await supabase
-      .from('profiles')
-      .update({ display_name: newDisplayName })
-      .eq('id', user.id)
+    await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: newDisplayName }),
+    })
     setProfile((prev: any) => ({ ...prev, display_name: newDisplayName }))
     setEditingName(false)
   }
 
-  const deleteOldAvatar = async (supabase: any, avatarUrl: string) => {
-    try {
-      // Extrahuj cestu zo URL
-      const urlParts = avatarUrl.split('/avatars/')
-      if (urlParts.length > 1) {
-        const filePath = urlParts[1].split('?')[0]
-        await supabase.storage.from('avatars').remove([filePath])
+  // Zmenší obrázok na 256px a vráti ho ako data URL (ukladá sa priamo do DB)
+  const resizeImageToDataUrl = (file: File, size = 256): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement('img')
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const scale = size / Math.min(img.width, img.height)
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return reject(new Error('Canvas not supported'))
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        URL.revokeObjectURL(img.src)
+        resolve(canvas.toDataURL('image/jpeg', 0.85))
       }
-    } catch (err) {
-      console.error('Failed to delete old avatar:', err)
-    }
+      img.onerror = () => reject(new Error('Invalid image'))
+      img.src = URL.createObjectURL(file)
+    })
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,35 +82,18 @@ export default function ProfilePage() {
     if (!file || !user) return
 
     setUploadingAvatar(true)
-    const supabase = createClient()
 
     try {
-      // Vymaž starý avatar
-      if (profile?.avatar_url) {
-        await deleteOldAvatar(supabase, profile.avatar_url)
-      }
+      const avatarDataUrl = await resizeImageToDataUrl(file)
 
-      // Vždy rovnaký názov súboru = automatický prepis
-      const fileExt = file.name.split('.').pop()
-      const filePath = `${user.id}.${fileExt}`
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_data_url: avatarDataUrl }),
+      })
+      if (!res.ok) throw new Error('Upload failed')
 
-      // Nahraj nový (upsert = prepíše existujúci)
-      const { error } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true })
-
-      if (error) throw error
-
-      // Pridaj timestamp aby sa cache obnovila
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-      const avatarUrl = `${data.publicUrl}?t=${Date.now()}`
-
-      await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', user.id)
-
-      setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrl }))
+      setProfile((prev: any) => ({ ...prev, avatar_url: avatarDataUrl }))
     } catch (err) {
       console.error('Avatar upload error:', err)
     } finally {
@@ -114,14 +105,13 @@ export default function ProfilePage() {
 
   const removeAvatar = async () => {
     if (!user || !profile?.avatar_url) return
-    const supabase = createClient()
 
     try {
-      await deleteOldAvatar(supabase, profile.avatar_url)
-      await supabase
-        .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id)
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove_avatar: true }),
+      })
       setProfile((prev: any) => ({ ...prev, avatar_url: null }))
     } catch (err) {
       console.error('Remove avatar error:', err)
@@ -129,16 +119,12 @@ export default function ProfilePage() {
   }
 
   const removeFromWatchlist = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from('watchlist').delete().eq('id', id)
+    await fetch(`/api/watchlist?id=${id}`, { method: 'DELETE' })
     setWatchlist(prev => prev.filter(item => item.id !== id))
   }
 
   const clearHistory = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('watch_history').delete().eq('user_id', user.id)
+    await fetch('/api/history', { method: 'DELETE' })
     setHistory([])
   }
 

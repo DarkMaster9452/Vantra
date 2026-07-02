@@ -1,14 +1,12 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 import { Search, LogOut, User, X } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
 export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
@@ -39,8 +37,9 @@ export default function Navbar() {
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
+    router.refresh()
   }
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {

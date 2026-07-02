@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import {
   getTrending,
@@ -11,8 +11,7 @@ import Carousel from '@/components/media/Carousel'
 import Navbar from '@/components/layout/Navbar'
 
 export default async function HomePage() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
 
   if (!user) redirect('/login')
 
