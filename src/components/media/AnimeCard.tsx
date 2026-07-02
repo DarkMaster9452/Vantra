@@ -17,7 +17,10 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
   return (
     <div
       onClick={() => router.push(`/anime/${anime.id}`)}
-      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card transition-transform duration-300 hover:-translate-y-1"
+      tabIndex={0}
+      role="button"
+      aria-label={title}
+      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1"
     >
       {/* Poster */}
       <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-lg">

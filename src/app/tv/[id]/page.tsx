@@ -266,6 +266,7 @@ export default function TVDetailPage() {
           {/* Season tabs */}
           <div className="relative group mb-4">
             <button
+              tabIndex={-1}
               onClick={() => document.getElementById('seasons-scroll')?.scrollBy({ left: -300, behavior: 'smooth' })}
               className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-1.5 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
             >
@@ -289,6 +290,7 @@ export default function TVDetailPage() {
               ))}
             </div>
             <button
+              tabIndex={-1}
               onClick={() => document.getElementById('seasons-scroll')?.scrollBy({ left: 300, behavior: 'smooth' })}
               className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-1.5 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
             >
@@ -318,6 +320,9 @@ export default function TVDetailPage() {
                   <div
                     key={ep.episode_number}
                     onClick={() => aired && setSelectedEpisode(ep.episode_number)}
+                    tabIndex={aired ? 0 : -1}
+                    role="button"
+                    aria-label={`Episode ${ep.episode_number}`}
                     className={`flex gap-4 p-3 rounded-xl border transition-all duration-200 ${
                       !aired
                         ? 'opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/30'
@@ -396,6 +401,7 @@ export default function TVDetailPage() {
             </h3>
             <div className="relative group">
               <button
+                tabIndex={-1}
                 onClick={() => document.getElementById('tv-backdrops-scroll')?.scrollBy({ left: -500, behavior: 'smooth' })}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-r border-t border-b border-zinc-800"
               >
@@ -417,6 +423,7 @@ export default function TVDetailPage() {
                 ))}
               </div>
               <button
+                tabIndex={-1}
                 onClick={() => document.getElementById('tv-backdrops-scroll')?.scrollBy({ left: 500, behavior: 'smooth' })}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-l border-t border-b border-zinc-800"
               >
@@ -437,6 +444,7 @@ export default function TVDetailPage() {
             </h3>
             <div className="relative group">
               <button
+                tabIndex={-1}
                 onClick={() => document.getElementById('tv-similar-scroll')?.scrollBy({ left: -500, behavior: 'smooth' })}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-r border-t border-b border-zinc-800"
               >
@@ -450,6 +458,7 @@ export default function TVDetailPage() {
                 ))}
               </div>
               <button
+                tabIndex={-1}
                 onClick={() => document.getElementById('tv-similar-scroll')?.scrollBy({ left: 500, behavior: 'smooth' })}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-red-600 p-2 rounded-l-lg opacity-0 group-hover:opacity-100 transition-all duration-200 border-l border-t border-b border-zinc-800"
               >
