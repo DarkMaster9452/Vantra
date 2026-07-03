@@ -40,50 +40,64 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
   }, [])
 
   // Fyzická klávesnica: písmená/číslice píšu do query bez natívneho inputu
-  // (natívny input by na TV otvoril systémovú klávesnicu)
+  // (natívny input by na TV otvoril systémovú klávesnicu).
+  // Capture fáza + stopPropagation, aby SpatialNav nebral Backspace ako Späť.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return
       if (e.key === 'Backspace') {
+        // Maž znaky, kým nejaké sú; s prázdnym query nechaj Backspace prebublať
+        // do SpatialNav, ktorý overlay zavrie cez back handler
+        if (queryRef.current.length > 0) {
+          e.preventDefault()
+          e.stopPropagation()
+          setQuery((q) => q.slice(0, -1))
+        }
+      } else if (e.key.length === 1) {
+        // preventDefault: medzerník nesmie "kliknúť" na focusnutý kláves
         e.preventDefault()
-        setQuery((q) => q.slice(0, -1))
-      } else if (e.key.length === 1 && e.key !== ' ') {
-        e.preventDefault()
+        e.stopPropagation()
         setQuery((q) => q + e.key)
-      } else if (e.key === ' ') {
-        // preventDefault, aby medzerník "neklikol" na focusnutý kláves
-        e.preventDefault()
-        setQuery((q) => q + ' ')
       }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [])
 
-  // Živé vyhľadávanie s debounce
+  // Živé vyhľadávanie s debounce; rozbehnutý fetch sa pri zmene query abortne,
+  // takže staré odpovede neprepíšu nové a loading sa vždy spoľahlivo zresetuje
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) return
+    const controller = new AbortController()
     const timer = setTimeout(async () => {
+      if (q.length < 2) {
+        setSuggestions([])
+        setResults([])
+        setLoading(false)
+        return
+      }
       setLoading(true)
       try {
-        const res = await fetch(`/api/tmdb?type=search&query=${encodeURIComponent(q)}`)
+        const res = await fetch(`/api/tmdb?type=search&query=${encodeURIComponent(q)}`, {
+          signal: controller.signal,
+        })
         const data = await res.json()
         // Iba filmy a seriály (multi-search vracia aj osoby)
         const media: TMDBMedia[] = (data.results || []).filter(
           (m: TMDBMedia) => m.media_type === 'movie' || m.media_type === 'tv'
         )
-        // Aktuálnosť odpovede – medzitým mohol používateľ písať ďalej
-        if (queryRef.current.trim() !== q) return
         setSuggestions(media.slice(0, 5))
         setResults(media.filter((m) => m.poster_path).slice(0, 12))
+        setLoading(false)
       } catch {
-        // sieťová chyba – nechaj posledné výsledky
-      } finally {
-        if (queryRef.current.trim() === q) setLoading(false)
+        // abort = prišla novšia query; loading rieši jej effect
+        if (!controller.signal.aborted) setLoading(false)
       }
-    }, 350)
-    return () => clearTimeout(timer)
+    }, q.length < 2 ? 0 : 350)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [query])
 
   const goSearch = () => {

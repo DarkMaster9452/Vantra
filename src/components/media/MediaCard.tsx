@@ -14,14 +14,30 @@ export default function MediaCard({ media }: MediaCardProps) {
   const year = (media.release_date || media.first_air_date || '').slice(0, 4)
   const type = media.media_type === 'tv' || media.name ? 'tv' : 'movie'
   const rating = media.vote_average ? media.vote_average.toFixed(1) : 'N/A'
+  const watchHref = `/watch/${type}/${media.id}`
 
   const handleClick = () => {
     router.push(`/${type}/${media.id}`)
   }
 
+  // Play/Pause na TV ovládači spustí film rovno z karty (OK otvára detail)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'MediaPlay' || e.key === 'MediaPlayPause') {
+      e.preventDefault()
+      e.stopPropagation()
+      router.push(watchHref)
+    }
+  }
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    router.push(watchHref)
+  }
+
   return (
     <div
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
       aria-label={title}
@@ -43,17 +59,23 @@ export default function MediaCard({ media }: MediaCardProps) {
           </div>
         )}
 
-        {/* Overlay pri hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-4">
-          <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg shadow-red-900/50 mb-2">
+        {/* Overlay pri hoveri alebo focusnutí (TV) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-4">
+          {/* Klik na play spustí film rovno; na ovládači tlačidlo Play/Pause */}
+          <button
+            tabIndex={-1}
+            aria-label={`Play ${title}`}
+            onClick={handlePlayClick}
+            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center shadow-lg shadow-red-900/50 mb-2 transition-colors duration-200"
+          >
             <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </div>
+          </button>
         </div>
 
-        {/* Red border on hover */}
-        <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 transition-colors duration-300" />
+        {/* Red border on hover – len dekorácia, nesmie kradnúť kliknutia play tlačidlu */}
+        <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 group-focus-within/card:border-red-500/50 transition-colors duration-300" />
       </div>
 
       {/* Info */}
