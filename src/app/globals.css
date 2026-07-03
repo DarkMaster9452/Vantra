@@ -50,6 +50,15 @@ a, button, input, select, textarea, [tabindex] {
   scroll-margin: 110px 28px;
 }
 
+/* Blikajúci kurzor v TV vyhľadávaní */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.caret-blink {
+  animation: caretBlink 1s step-end infinite;
+}
+
 /* Page transitions */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

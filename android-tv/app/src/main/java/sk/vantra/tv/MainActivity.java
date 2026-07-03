@@ -98,11 +98,18 @@ public class MainActivity extends Activity {
             webView.setVisibility(View.VISIBLE);
             return;
         }
-        if (webView.canGoBack()) {
-            webView.goBack();
-            return;
-        }
-        super.onBackPressed();
+        // Najprv dostane šancu stránka (zavrieť search overlay, zobraziť menu
+        // prehrávača...) – až keď Back nespracuje, ideme v histórii späť.
+        webView.evaluateJavascript(
+                "(function(){try{return window.__vantraHandleBack?window.__vantraHandleBack():'unhandled'}catch(e){return 'unhandled'}})()",
+                value -> {
+                    if ("\"handled\"".equals(value)) return;
+                    if (webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        finish();
+                    }
+                });
     }
 
     @Override

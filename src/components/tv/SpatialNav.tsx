@@ -1,51 +1,78 @@
 'use client'
 
 import { useEffect } from 'react'
+import { handleBack } from './backHandler'
 
 // Globálna navigácia šípkami (D-pad na TV ovládači).
 // Šípky presúvajú focus geometricky medzi ovládateľnými prvkami,
 // OK/Enter "klikne" aj na divy s role="button".
+//
+// Podporuje focus trap: ak je na stránke viditeľný prvok s [data-tv-trap]
+// (napr. search overlay), navigácia sa obmedzí len naň.
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 function isVisible(el: HTMLElement) {
-  if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false
+  const style = getComputedStyle(el)
+  if (style.visibility === 'hidden' || style.display === 'none') return false
+  if (el.offsetParent === null && style.position !== 'fixed') return false
   const rect = el.getBoundingClientRect()
   return rect.width > 0 && rect.height > 0
 }
 
-function getFocusables(): HTMLElement[] {
-  return Array.from(document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible)
+// Ak je otvorený overlay s [data-tv-trap], navigujeme len v ňom (najvrchnejší vyhráva)
+function getScope(): ParentNode {
+  const traps = Array.from(document.querySelectorAll<HTMLElement>('[data-tv-trap]')).filter(isVisible)
+  return traps.length ? traps[traps.length - 1] : document
 }
 
-// Nájde najlepšieho kandidáta v danom smere od aktuálneho prvku
+function getFocusables(): HTMLElement[] {
+  return Array.from(getScope().querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible)
+}
+
+function overlapLength(minA: number, maxA: number, minB: number, maxB: number) {
+  return Math.max(0, Math.min(maxA, maxB) - Math.max(minA, minB))
+}
+
+// Nájde najlepšieho kandidáta v danom smere od aktuálneho prvku.
+// Prvky zarovnané v rovnakom riadku/stĺpci majú prednosť pred diagonálnymi,
+// takže sa v carousele nepreskakuje medzi riadkami.
 function findNext(current: HTMLElement, direction: 'up' | 'down' | 'left' | 'right'): HTMLElement | null {
-  const rect = current.getBoundingClientRect()
-  const cx = rect.left + rect.width / 2
-  const cy = rect.top + rect.height / 2
+  const a = current.getBoundingClientRect()
+  const acx = a.left + a.width / 2
+  const acy = a.top + a.height / 2
 
   let best: HTMLElement | null = null
   let bestScore = Infinity
 
   for (const el of getFocusables()) {
-    if (el === current) continue
-    const r = el.getBoundingClientRect()
-    const ex = r.left + r.width / 2
-    const ey = r.top + r.height / 2
-    const dx = ex - cx
-    const dy = ey - cy
+    if (el === current || el.contains(current) || current.contains(el)) continue
+    const b = el.getBoundingClientRect()
+    const bcx = b.left + b.width / 2
+    const bcy = b.top + b.height / 2
+    const dx = bcx - acx
+    const dy = bcy - acy
 
-    // Prvok musí ležať v požadovanom smere
-    if (direction === 'up' && dy >= -1) continue
-    if (direction === 'down' && dy <= 1) continue
-    if (direction === 'left' && dx >= -1) continue
-    if (direction === 'right' && dx <= 1) continue
+    let primary: number
+    let secondary: number
+    let aligned: boolean
 
-    // Vzdialenosť v smere pohybu váži menej než vybočenie do strany
-    const primary = direction === 'up' || direction === 'down' ? Math.abs(dy) : Math.abs(dx)
-    const secondary = direction === 'up' || direction === 'down' ? Math.abs(dx) : Math.abs(dy)
-    const score = primary + secondary * 2.5
+    if (direction === 'left' || direction === 'right') {
+      // Prvok musí ležať v požadovanom smere
+      if (direction === 'right' ? dx <= 1 : dx >= -1) continue
+      primary = Math.abs(dx)
+      secondary = Math.abs(dy)
+      aligned = overlapLength(a.top, a.bottom, b.top, b.bottom) > 0
+    } else {
+      if (direction === 'down' ? dy <= 1 : dy >= -1) continue
+      primary = Math.abs(dy)
+      secondary = Math.abs(dx)
+      aligned = overlapLength(a.left, a.right, b.left, b.right) > 0
+    }
+
+    // Zarovnané prvky (rovnaký riadok/stĺpec) vyhrávajú, diagonálne až potom
+    const score = aligned ? primary + secondary * 0.4 : primary + secondary * 2.5 + 1000
 
     if (score < bestScore) {
       bestScore = score
@@ -57,13 +84,42 @@ function findNext(current: HTMLElement, direction: 'up' | 'down' | 'left' | 'rig
 
 export default function SpatialNav() {
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
+    // Pamätáme si posledný focusnutý prvok – po strate focusu (napr. po kliknutí
+    // do prázdna) sa navigácia vráti tam, kde bola, nie na začiatok stránky.
+    let lastFocused: HTMLElement | null = null
 
-      // OK/Enter na "div tlačidlách" (karty s role="button")
-      if (e.key === 'Enter' && target?.getAttribute?.('role') === 'button' && target.tagName !== 'BUTTON') {
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as HTMLElement
+      if (t && t !== document.body) lastFocused = t
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
+      const target = e.target as HTMLElement
+      const tag = target?.tagName
+
+      // OK/Enter (a medzerník) na "div tlačidlách" (karty s role="button")
+      if (
+        (e.key === 'Enter' || e.key === ' ') &&
+        target?.getAttribute?.('role') === 'button' &&
+        tag !== 'BUTTON' &&
+        tag !== 'A'
+      ) {
         e.preventDefault()
         target.click()
+        return
+      }
+
+      // Tlačidlo Späť: Escape vždy, Backspace mimo textových polí (TV prehliadače)
+      if (e.key === 'Escape' || (e.key === 'Backspace' && tag !== 'INPUT' && tag !== 'TEXTAREA')) {
+        if (handleBack()) {
+          e.preventDefault()
+          return
+        }
+        if (e.key === 'Backspace') {
+          e.preventDefault()
+          history.back()
+        }
         return
       }
 
@@ -77,23 +133,34 @@ export default function SpatialNav() {
       if (!direction) return
 
       // V textových poliach nechaj šípky doľava/doprava na pohyb kurzora
-      const tag = target?.tagName
       if ((tag === 'INPUT' || tag === 'TEXTAREA') && (direction === 'left' || direction === 'right')) return
       if (tag === 'SELECT') return
 
       const current = document.activeElement as HTMLElement | null
+      const scope = getScope()
+      const currentValid =
+        current &&
+        current !== document.body &&
+        isVisible(current) &&
+        (scope === document || scope.contains(current))
 
-      // Nič nie je vybraté → vyber prvý viditeľný prvok
-      if (!current || current === document.body) {
-        const first = getFocusables()[0]
-        if (first) {
+      // Nič nie je vybraté (alebo focus zostal mimo otvoreného overlay)
+      // → vráť sa na posledný známy prvok, inak na prvý viditeľný
+      if (!currentValid) {
+        const fallback =
+          lastFocused && lastFocused.isConnected && isVisible(lastFocused) &&
+          (scope === document || scope.contains(lastFocused))
+            ? lastFocused
+            : getFocusables()[0]
+        if (fallback) {
           e.preventDefault()
-          first.focus()
+          fallback.focus()
+          fallback.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
         }
         return
       }
 
-      const next = findNext(current, direction)
+      const next = findNext(current as HTMLElement, direction)
       if (next) {
         e.preventDefault()
         next.focus()
@@ -102,7 +169,11 @@ export default function SpatialNav() {
     }
 
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('focusin', onFocusIn)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('focusin', onFocusIn)
+    }
   }, [])
 
   return null
