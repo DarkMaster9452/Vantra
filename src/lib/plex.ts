@@ -5,6 +5,13 @@
 // PLEX_SERVER_URL musí byť HTTPS adresa dostupná z internetu – ideálne
 // plex.direct URL servera (Settings → Network → custom access URL),
 // inak prehliadač zablokuje mixed content.
+//
+// BEZPEČNOSŤ: stream URL s X-Plex-Token sa posiela prihláseným
+// používateľom (prehrávač ho potrebuje na priame prehratie súboru).
+// Proxovanie celého videa cez Vercel serverless nie je reálne (limity
+// trvania odpovede + Range requesty pri pretáčaní), preto ako PLEX_TOKEN
+// použi token vyhradeného Plex používateľa s prístupom LEN na zdieľané
+// knižnice (nie owner/admin token) – ten nemá práva na správu servera.
 
 const PLEX_URL = process.env.PLEX_SERVER_URL?.replace(/\/+$/, '')
 const PLEX_TOKEN = process.env.PLEX_TOKEN
