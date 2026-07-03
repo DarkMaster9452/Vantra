@@ -5,10 +5,12 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { useHistory } from '@/hooks/useHistory'
 import { registerBackHandler } from '@/components/tv/backHandler'
+import VideoPlayer from '@/components/player/VideoPlayer'
 
 interface Provider {
   name: string
   url: string
+  kind?: 'embed' | 'file'
 }
 
 // Po tomto čase nečinnosti sa horná lišta schová a ovládač prejde na prehrávač
@@ -33,15 +35,15 @@ export default function WatchPage() {
   const barVisibleRef = useRef(true)
   const barRef = useRef<HTMLDivElement>(null)
   const backButtonRef = useRef<HTMLButtonElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  // Prvok, ktorému sa odovzdáva focus ovládača: iframe embedu alebo
+  // kontajner vlastného video prehrávača (Plex)
+  const playerRef = useRef<HTMLElement | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     barVisibleRef.current = barVisible
   }, [barVisible])
 
-  // Po schovaní lišty ide focus do iframe s prehrávačom – embed player potom
-  // dostáva klávesy ovládača priamo (play/pause, posun, hlasitosť, titulky)
   const scheduleHide = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current)
     hideTimer.current = setTimeout(function tick() {
@@ -52,7 +54,7 @@ export default function WatchPage() {
         return
       }
       setBarVisible(false)
-      iframeRef.current?.focus()
+      playerRef.current?.focus()
     }, BAR_HIDE_DELAY)
   }, [])
 
@@ -65,21 +67,37 @@ export default function WatchPage() {
     const fetchStream = async () => {
       setLoading(true)
       try {
-        const url = `/api/stream?id=${id}&type=${type}&season=${season}&episode=${episode}`
+        // Najprv TMDB detail – titul a rok idú do stream API kvôli
+        // vyhľadaniu v Plex knižnici, a rovno poslúžia aj pre históriu
+        let title = ''
+        let year = ''
+        let posterPath = ''
+        try {
+          const tmdbRes = await fetch(`/api/tmdb?type=${type === 'movie' ? 'movie-detail' : 'tv-detail'}&id=${id}`)
+          if (tmdbRes.ok) {
+            const tmdbData = await tmdbRes.json()
+            title = tmdbData.title || tmdbData.name || ''
+            year = (tmdbData.release_date || tmdbData.first_air_date || '').slice(0, 4)
+            posterPath = tmdbData.poster_path || ''
+          }
+        } catch {
+          // stream ide aj bez metadát
+        }
+
+        const url =
+          `/api/stream?id=${id}&type=${type}&season=${season}&episode=${episode}` +
+          `&title=${encodeURIComponent(title)}&year=${year}`
         const res = await fetch(url)
         const data = await res.json()
         setProviders(data.providers || [])
         setActiveProvider(data.primary || null)
 
-        // Pridaj do histórie
-        const tmdbRes = await fetch(`/api/tmdb?type=${type === 'movie' ? 'movie-detail' : 'tv-detail'}&id=${id}`)
-        if (tmdbRes.ok) {
-          const tmdbData = await tmdbRes.json()
+        if (title) {
           await addToHistory(
             parseInt(id),
             type,
-            tmdbData.title || tmdbData.name || 'Unknown',
-            tmdbData.poster_path || '',
+            title,
+            posterPath,
             type === 'tv' ? parseInt(season) : undefined,
             type === 'tv' ? parseInt(episode) : undefined
           )
@@ -128,15 +146,15 @@ export default function WatchPage() {
     return () => document.removeEventListener('mousemove', onMouseMove)
   }, [showBar])
 
-  // Keď je lišta schovaná a nejaká klávesa príde do rodičovskej stránky
-  // (focus vypadol z iframe), vráť focus prehrávaču
+  // Keď je lišta schovaná a klávesa príde mimo prehrávača, vráť focus prehrávaču
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (barVisibleRef.current) return
       if (e.key === 'Escape' || e.key === 'Backspace') return // rieši back handler
-      if (document.activeElement !== iframeRef.current) {
+      const player = playerRef.current
+      if (player && !player.contains(document.activeElement) && document.activeElement !== player) {
         e.preventDefault()
-        iframeRef.current?.focus()
+        player.focus()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -151,18 +169,31 @@ export default function WatchPage() {
           <div className="text-white text-lg">Loading...</div>
         </div>
       ) : activeProvider ? (
-        <iframe
-          ref={iframeRef}
-          key={activeProvider.url}
-          src={activeProvider.url}
-          tabIndex={0}
-          onFocus={() => setBarVisible(false)}
-          className="absolute inset-0 w-full h-full border-0"
-          allowFullScreen={true}
-          allow="autoplay; fullscreen; picture-in-picture; web-share"
-          referrerPolicy="no-referrer"
-          style={{ border: 'none' }}
-        />
+        activeProvider.kind === 'file' ? (
+          // Plex: priamy stream vo vlastnom Vantra prehrávači
+          <VideoPlayer
+            key={activeProvider.url}
+            ref={(el) => {
+              playerRef.current = el
+            }}
+            src={activeProvider.url}
+          />
+        ) : (
+          <iframe
+            ref={(el) => {
+              playerRef.current = el
+            }}
+            key={activeProvider.url}
+            src={activeProvider.url}
+            tabIndex={0}
+            onFocus={() => setBarVisible(false)}
+            className="absolute inset-0 w-full h-full border-0"
+            allowFullScreen={true}
+            allow="autoplay; fullscreen; picture-in-picture; web-share"
+            referrerPolicy="no-referrer"
+            style={{ border: 'none' }}
+          />
+        )
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-zinc-400">No stream available</p>
@@ -194,6 +225,8 @@ export default function WatchPage() {
               className={`px-3 py-1 rounded text-sm transition ${
                 activeProvider?.name === provider.name
                   ? 'bg-white text-black font-bold'
+                  : provider.kind === 'file'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
             >
