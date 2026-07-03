@@ -1,17 +1,16 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { Search, LogOut, User, X, Shield } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { Search, LogOut, User, Shield } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import SearchOverlay from '@/components/search/SearchOverlay'
 
 export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/profile')
@@ -26,36 +25,10 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => {
-    if (searchOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
-  }, [searchOpen])
-
-  // Zatvori search na Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSearchOpen(false)
-        setSearchQuery('')
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
     router.refresh()
-  }
-
-  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      router.push(`/browse?search=${encodeURIComponent(searchQuery.trim())}`)
-      setSearchOpen(false)
-      setSearchQuery('')
-    }
   }
 
   const navLinks = [
@@ -138,41 +111,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Search Overlay */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-start pt-32 px-4"
-          style={{ animation: 'fadeIn 0.2s ease forwards' }}
-        >
-          {/* Close button */}
-          <button
-            onClick={() => { setSearchOpen(false); setSearchQuery('') }}
-            className="absolute top-6 right-6 text-zinc-400 hover:text-white transition-colors duration-200 p-2"
-          >
-            <X className="w-6 h-6" />
-          </button>
-
-          {/* Search input */}
-          <div className="w-full max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500 w-6 h-6" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearch}
-                placeholder="Search movies, shows, anime..."
-                className="w-full bg-zinc-900 border-2 border-zinc-700 focus:border-red-500 text-white placeholder-zinc-500 pl-14 pr-6 py-5 rounded-2xl text-xl focus:outline-none transition-colors duration-200"
-              />
-            </div>
-
-            <p className="text-zinc-600 text-sm mt-4 text-center">
-              Press <kbd className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded text-xs">Enter</kbd> to search · <kbd className="bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded text-xs">Esc</kbd> to close
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Search Overlay s TV klávesnicou a živými návrhmi */}
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
     </>
   )
 }
