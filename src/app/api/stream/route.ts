@@ -19,27 +19,21 @@ interface ProviderDef {
 
 const PROVIDERS: ProviderDef[] = [
   {
-    // ds_lang = predvolený jazyk titulkov, preto je VidSrc primárny
-    name: 'VidSrc',
-    getMovieUrl: (id: number) => `https://vidsrc.xyz/embed/movie?tmdb=${id}&ds_lang=${SUB_LANG}&autoplay=1`,
-    getTvUrl: (id: number, s: number, e: number) =>
-      `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}&ds_lang=${SUB_LANG}&autoplay=1`,
-  },
-  {
+    // Primárny: spoľahlivý, autoplay, kvalitné zdroje až do 4K podľa titulu
     name: 'VidLink',
     getMovieUrl: (id: number) => `https://vidlink.pro/movie/${id}?autoplay=true&title=true`,
     getTvUrl: (id: number, s: number, e: number) => `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true&title=true`,
     getAnimeUrl: (malId: number, e: number) => `https://vidlink.pro/anime/${malId}/1/${e}?autoplay=true`,
   },
   {
-    name: 'Videasy',
-    getMovieUrl: (id: number) => `https://player.videasy.net/movie/${id}?autoplay=true`,
-    getTvUrl: (id: number, s: number, e: number) => `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true`,
-  },
-  {
-    name: 'VidFast',
+    name: 'VidFast 4K',
     getMovieUrl: (id: number) => `https://vidfast.pro/movie/${id}?autoPlay=true`,
     getTvUrl: (id: number, s: number, e: number) => `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true`,
+  },
+  {
+    name: 'Videasy 4K',
+    getMovieUrl: (id: number) => `https://player.videasy.net/movie/${id}?autoplay=true`,
+    getTvUrl: (id: number, s: number, e: number) => `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true`,
   },
   {
     name: 'MultiEmbed',
@@ -51,6 +45,13 @@ const PROVIDERS: ProviderDef[] = [
     name: 'Embed.su',
     getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
     getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    // Jediný s predvolenými titulkami (ds_lang)
+    name: 'VidSrc',
+    getMovieUrl: (id: number) => `https://vidsrc.xyz/embed/movie?tmdb=${id}&ds_lang=${SUB_LANG}&autoplay=1`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}&ds_lang=${SUB_LANG}&autoplay=1`,
   },
   {
     name: 'AutoEmbed',

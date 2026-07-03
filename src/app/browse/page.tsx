@@ -41,6 +41,10 @@ function BrowseContent() {
         url = `/api/tmdb?type=popular-movies&page=${pageNum}`
       } else if (typeFilter === 'tv') {
         url = `/api/tmdb?type=popular-tv&page=${pageNum}`
+      } else if (typeFilter === 'top-movie') {
+        url = `/api/tmdb?type=top-rated-movies&page=${pageNum}`
+      } else if (typeFilter === 'top-tv') {
+        url = `/api/tmdb?type=top-rated-tv&page=${pageNum}`
       } else {
         url = `/api/tmdb?type=trending&page=${pageNum}`
       }
@@ -107,7 +111,9 @@ function BrowseContent() {
         <h1 className="text-2xl font-bold mb-6">
           {searchQuery ? `Results for "${searchQuery}"` :
            typeFilter === 'movie' ? 'Popular Movies' :
-           typeFilter === 'tv' ? 'Popular TV Shows' : 'Trending'}
+           typeFilter === 'tv' ? 'Popular TV Shows' :
+           typeFilter === 'top-movie' ? 'Top Rated Movies' :
+           typeFilter === 'top-tv' ? 'Top Rated TV Shows' : 'Trending'}
         </h1>
 
         {/* Grid */}

@@ -3,14 +3,17 @@
 import { TMDBMedia } from '@/lib/tmdb'
 import MediaCard from './MediaCard'
 import { useRef } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface CarouselProps {
   title: string
   items: TMDBMedia[]
+  /** Cieľ "View All" – kompletný zoznam kategórie (browse grid s Load More) */
+  href?: string
 }
 
-export default function Carousel({ title, items }: CarouselProps) {
+export default function Carousel({ title, items, href }: CarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null)
 
   const scroll = (direction: 'left' | 'right') => {
@@ -22,11 +25,22 @@ export default function Carousel({ title, items }: CarouselProps) {
 
   return (
     <div className="mb-10 fade-in">
-      {/* Nadpis */}
-      <h2 className="text-white text-xl font-semibold mb-4 px-4 md:px-8 flex items-center gap-2 group cursor-default">
-        <span className="w-1 h-5 bg-red-500 rounded-full inline-block"></span>
-        {title}
-      </h2>
+      {/* Nadpis + preklik na celú kategóriu */}
+      <div className="flex items-center justify-between mb-4 px-4 md:px-8">
+        <h2 className="text-white text-xl font-semibold flex items-center gap-2 cursor-default">
+          <span className="w-1 h-5 bg-red-500 rounded-full inline-block"></span>
+          {title}
+        </h2>
+        {href && (
+          <Link
+            href={href}
+            className="flex items-center gap-1 text-sm font-medium text-zinc-400 hover:text-red-400 focus:text-red-400 transition-colors duration-200 rounded-lg px-2 py-1"
+          >
+            View All
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
+      </div>
 
       {/* Carousel wrapper */}
       <div className="relative group">
