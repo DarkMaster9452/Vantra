@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
+import { findPlexStream, plexConfigured } from '@/lib/plex'
+import { getMovieDetail, getTVDetail } from '@/lib/tmdb'
 
 // Predvolený jazyk titulkov posielaný providerom, ktorí to podporujú
 // (ak titulky v tomto jazyku existujú, prehrávač ich rovno zapne).
 // Zmena na češtinu = 'cs'.
 const SUB_LANG = 'sk'
 
+// Farba Vantry pre embed prehrávače, ktoré podporujú theming (hex bez #)
+const ACCENT = 'e50914'
+
 // Embed provideri zoradení podľa priority. Kde to provider podporuje,
-// posielame autoplay a predvolené titulky; kvalita je u všetkých adaptívna
-// (najvyššia, akú pripojenie zvládne) a audio je v pôvodnom znení (EN).
-// getAnimeUrl majú len provideri, ktorí vedia prehrať anime cez MAL id.
+// posielame autoplay, farbu UI a predvolené titulky; kvalita je u všetkých
+// adaptívna (najvyššia, akú pripojenie zvládne) a audio je v pôvodnom
+// znení (EN). getAnimeUrl majú len provideri s podporou MAL id.
+// Pred nich sa zaraďuje Plex (kind: 'file'), ak je nakonfigurovaný
+// a titul je v knižnici – hrá v natívnom Vantra prehrávači.
 interface ProviderDef {
   name: string
   getMovieUrl: (id: number) => string
@@ -19,21 +26,23 @@ interface ProviderDef {
 
 const PROVIDERS: ProviderDef[] = [
   {
-    // Primárny: spoľahlivý, autoplay, kvalitné zdroje až do 4K podľa titulu
+    // Primárny embed: spoľahlivý, autoplay, kvalitné zdroje až do 4K podľa titulu
     name: 'VidLink',
-    getMovieUrl: (id: number) => `https://vidlink.pro/movie/${id}?autoplay=true&title=true`,
-    getTvUrl: (id: number, s: number, e: number) => `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true&title=true`,
-    getAnimeUrl: (malId: number, e: number) => `https://vidlink.pro/anime/${malId}/1/${e}?autoplay=true`,
+    getMovieUrl: (id: number) => `https://vidlink.pro/movie/${id}?autoplay=true&title=true&primaryColor=${ACCENT}`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true&title=true&primaryColor=${ACCENT}`,
+    getAnimeUrl: (malId: number, e: number) => `https://vidlink.pro/anime/${malId}/1/${e}?autoplay=true&primaryColor=${ACCENT}`,
   },
   {
     name: 'VidFast 4K',
-    getMovieUrl: (id: number) => `https://vidfast.pro/movie/${id}?autoPlay=true`,
-    getTvUrl: (id: number, s: number, e: number) => `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true`,
+    getMovieUrl: (id: number) => `https://vidfast.pro/movie/${id}?autoPlay=true&theme=${ACCENT}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true&theme=${ACCENT}`,
   },
   {
     name: 'Videasy 4K',
-    getMovieUrl: (id: number) => `https://player.videasy.net/movie/${id}?autoplay=true`,
-    getTvUrl: (id: number, s: number, e: number) => `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true`,
+    getMovieUrl: (id: number) => `https://player.videasy.net/movie/${id}?autoplay=true&color=${ACCENT}`,
+    getTvUrl: (id: number, s: number, e: number) =>
+      `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true&color=${ACCENT}`,
   },
   {
     name: 'MultiEmbed',
@@ -73,6 +82,9 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
   const season = searchParams.get('season')
   const episode = searchParams.get('episode')
+  // Titul + rok posiela klient (má ich z TMDB detailu) kvôli Plex vyhľadávaniu
+  let title = searchParams.get('title') || ''
+  let year = parseInt(searchParams.get('year') || '') || undefined
 
   if (!tmdbId || !type) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
@@ -85,8 +97,9 @@ export async function GET(request: NextRequest) {
   // Anime vedia prehrať len provideri s podporou MAL id
   const available = type === 'anime' ? PROVIDERS.filter((p) => p.getAnimeUrl) : PROVIDERS
 
-  const urls = available.map((provider) => ({
+  const providers: { name: string; url: string; kind: 'embed' | 'file' }[] = available.map((provider) => ({
     name: provider.name,
+    kind: 'embed',
     url:
       type === 'movie'
         ? provider.getMovieUrl(id)
@@ -95,5 +108,23 @@ export async function GET(request: NextRequest) {
         : provider.getTvUrl(id, s, e),
   }))
 
-  return NextResponse.json({ providers: urls, primary: urls[0] })
+  // Plex má prednosť: vlastná knižnica, natívny prehrávač, plné ovládanie
+  if ((type === 'movie' || type === 'tv') && plexConfigured()) {
+    if (!title) {
+      // fallback, keby klient titul neposlal
+      try {
+        const detail = type === 'movie' ? await getMovieDetail(id) : await getTVDetail(id)
+        title = detail.title || detail.name || ''
+        year = parseInt((detail.release_date || detail.first_air_date || '').slice(0, 4)) || undefined
+      } catch {
+        // bez titulu Plex preskočíme
+      }
+    }
+    const plexUrl = await findPlexStream({ type, tmdbId: id, title, year, season: s, episode: e })
+    if (plexUrl) {
+      providers.unshift({ name: 'Plex', url: plexUrl, kind: 'file' })
+    }
+  }
+
+  return NextResponse.json({ providers, primary: providers[0] })
 }
