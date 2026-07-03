@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
         data = await getPopularTV(page)
         break
       case 'top-rated-movies':
-        data = await getTopRatedMovies()
+        data = await getTopRatedMovies(page)
         break
       case 'top-rated-tv':
-        data = await getTopRatedTV()
+        data = await getTopRatedTV(page)
         break
       case 'search':
         if (!query) return NextResponse.json({ error: 'No query' }, { status: 400 })

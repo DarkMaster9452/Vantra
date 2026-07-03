@@ -29,13 +29,13 @@ export async function getPopularTV(page: number = 1) {
 }
 
 // Top rated filmy
-export async function getTopRatedMovies() {
-  return tmdbFetch('/movie/top_rated?language=en-US')
+export async function getTopRatedMovies(page: number = 1) {
+  return tmdbFetch('/movie/top_rated?language=en-US', page)
 }
 
 // Top rated seriály
-export async function getTopRatedTV() {
-  return tmdbFetch('/tv/top_rated?language=en-US')
+export async function getTopRatedTV(page: number = 1) {
+  return tmdbFetch('/tv/top_rated?language=en-US', page)
 }
 
 export async function getMovieDetail(id: number) {
