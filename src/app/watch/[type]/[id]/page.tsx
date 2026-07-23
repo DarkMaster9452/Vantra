@@ -11,6 +11,7 @@ interface Provider {
   name: string
   url: string
   kind?: 'embed' | 'file'
+  hd4k?: boolean
 }
 
 // Po tomto čase nečinnosti sa horná lišta schová a ovládač prejde na prehrávač
@@ -29,6 +30,7 @@ export default function WatchPage() {
 
   const [providers, setProviders] = useState<Provider[]>([])
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null)
+  const [mediaTitle, setMediaTitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [barVisible, setBarVisible] = useState(true)
 
@@ -82,6 +84,10 @@ export default function WatchPage() {
           }
         } catch {
           // stream ide aj bez metadát
+        }
+
+        if (title) {
+          setMediaTitle(type === 'tv' ? `${title} · S${season} E${episode}` : title)
         }
 
         const url =
@@ -177,6 +183,7 @@ export default function WatchPage() {
               playerRef.current = el
             }}
             src={activeProvider.url}
+            title={mediaTitle}
           />
         ) : (
           <iframe
@@ -222,7 +229,7 @@ export default function WatchPage() {
             <button
               key={provider.name}
               onClick={() => setActiveProvider(provider)}
-              className={`px-3 py-1 rounded text-sm transition ${
+              className={`px-3 py-1 rounded text-sm transition inline-flex items-center gap-1.5 ${
                 activeProvider?.name === provider.name
                   ? 'bg-white text-black font-bold'
                   : provider.kind === 'file'
@@ -231,6 +238,15 @@ export default function WatchPage() {
               }`}
             >
               {provider.name}
+              {provider.hd4k && (
+                <span
+                  className={`text-[10px] font-bold leading-none px-1 py-0.5 rounded ${
+                    activeProvider?.name === provider.name ? 'bg-black/15 text-black' : 'bg-red-600 text-white'
+                  }`}
+                >
+                  4K
+                </span>
+              )}
             </button>
           ))}
 
