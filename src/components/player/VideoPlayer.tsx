@@ -46,9 +46,13 @@ const controlButtonClass =
 interface VideoPlayerProps {
   src: string
   title?: string
+  /** Zavolá sa pri chybe prehrávania – watch page prepne na ďalší zdroj */
+  onError?: () => void
+  /** Zavolá sa po dopozeraní – watch page môže spustiť ďalšiu epizódu */
+  onEnded?: () => void
 }
 
-const VideoPlayer = forwardRef<HTMLDivElement, VideoPlayerProps>(function VideoPlayer({ src, title }, ref) {
+const VideoPlayer = forwardRef<HTMLDivElement, VideoPlayerProps>(function VideoPlayer({ src, title, onError, onEnded }, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   useImperativeHandle(ref, () => containerRef.current!)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -278,6 +282,7 @@ const VideoPlayer = forwardRef<HTMLDivElement, VideoPlayerProps>(function VideoP
           } catch {
             // ignoruj
           }
+          onEnded?.()
         }}
         onVolumeChange={(e) => {
           setVolume(e.currentTarget.volume)
@@ -286,6 +291,7 @@ const VideoPlayer = forwardRef<HTMLDivElement, VideoPlayerProps>(function VideoP
         onError={() => {
           setError(true)
           setBuffering(false)
+          onError?.()
         }}
         className="absolute inset-0 w-full h-full"
       />

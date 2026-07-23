@@ -16,6 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VANTRA",
   description: "Private streaming platform",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "VANTRA",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({

@@ -50,15 +50,17 @@ const PROVIDERS: ProviderDef[] = [
       `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true&color=${ACCENT}`,
   },
   {
+    name: 'VidSrc.cc',
+    hd4k: true,
+    getMovieUrl: (id: number) => `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}?autoPlay=true`,
+    getAnimeUrl: (malId: number, e: number) => `https://vidsrc.cc/v2/embed/anime/${malId}/${e}/sub?autoPlay=true`,
+  },
+  {
     name: 'MultiEmbed',
     getMovieUrl: (id: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
     getTvUrl: (id: number, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
     getAnimeUrl: (malId: number, e: number) => `https://multiembed.mov/?video_id=${malId}&mal=1&e=${e}`,
-  },
-  {
-    name: 'Embed.su',
-    getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
   },
   {
     // Jediný s predvolenými titulkami (ds_lang)
@@ -66,6 +68,31 @@ const PROVIDERS: ProviderDef[] = [
     getMovieUrl: (id: number) => `https://vidsrc.xyz/embed/movie?tmdb=${id}&ds_lang=${SUB_LANG}&autoplay=1`,
     getTvUrl: (id: number, s: number, e: number) =>
       `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}&ds_lang=${SUB_LANG}&autoplay=1`,
+  },
+  {
+    name: 'VidSrc.to',
+    getMovieUrl: (id: number) => `https://vidsrc.to/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    name: '2Embed',
+    getMovieUrl: (id: number) => `https://www.2embed.cc/embed/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+  },
+  {
+    name: 'MoviesAPI',
+    getMovieUrl: (id: number) => `https://moviesapi.club/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://moviesapi.club/tv/${id}-${s}-${e}`,
+  },
+  {
+    name: 'VidJoy',
+    getMovieUrl: (id: number) => `https://vidjoy.pro/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidjoy.pro/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    name: 'Embed.su',
+    getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
   },
   {
     name: 'AutoEmbed',
