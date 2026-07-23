@@ -12,6 +12,7 @@ import {
 } from '@/lib/tmdb'
 import Hero from '@/components/media/Hero'
 import Carousel from '@/components/media/Carousel'
+import ContinueWatching from '@/components/media/ContinueWatching'
 import Navbar from '@/components/layout/Navbar'
 
 export default async function HomePage() {
@@ -52,6 +53,7 @@ export default async function HomePage() {
           Bez negatívneho marginu: nadpisy majú vlastný priestor a neprelínajú
           sa s hero bannerom */}
       <div className="relative z-10 pt-4 pb-16">
+        <ContinueWatching />
         <Carousel title="Trending This Week" items={trending.results} href="/browse" />
         <Carousel title="Popular Movies" items={popularMovies.results} href="/browse?type=movie" />
         <Carousel title="Popular TV Shows" items={popularTV.results} href="/browse?type=tv" />

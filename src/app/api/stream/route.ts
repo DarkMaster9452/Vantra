@@ -19,6 +19,8 @@ const ACCENT = 'e50914'
 // a titul je v knižnici – hrá v natívnom Vantra prehrávači.
 interface ProviderDef {
   name: string
+  // Provider bežne ponúka 4K/UHD zdroje (podľa titulu) – UI ukáže 4K badge
+  hd4k?: boolean
   getMovieUrl: (id: number) => string
   getTvUrl: (id: number, s: number, e: number) => string
   getAnimeUrl?: (malId: number, e: number) => string
@@ -28,6 +30,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     // Primárny embed: spoľahlivý, autoplay, kvalitné zdroje až do 4K podľa titulu
     name: 'VidLink',
+    hd4k: true,
     getMovieUrl: (id: number) => `https://vidlink.pro/movie/${id}?autoplay=true&title=true&primaryColor=${ACCENT}`,
     getTvUrl: (id: number, s: number, e: number) =>
       `https://vidlink.pro/tv/${id}/${s}/${e}?autoplay=true&title=true&primaryColor=${ACCENT}`,
@@ -35,14 +38,23 @@ const PROVIDERS: ProviderDef[] = [
   },
   {
     name: 'VidFast 4K',
+    hd4k: true,
     getMovieUrl: (id: number) => `https://vidfast.pro/movie/${id}?autoPlay=true&theme=${ACCENT}`,
     getTvUrl: (id: number, s: number, e: number) => `https://vidfast.pro/tv/${id}/${s}/${e}?autoPlay=true&theme=${ACCENT}`,
   },
   {
     name: 'Videasy 4K',
+    hd4k: true,
     getMovieUrl: (id: number) => `https://player.videasy.net/movie/${id}?autoplay=true&color=${ACCENT}`,
     getTvUrl: (id: number, s: number, e: number) =>
       `https://player.videasy.net/tv/${id}/${s}/${e}?autoplay=true&color=${ACCENT}`,
+  },
+  {
+    name: 'VidSrc.cc',
+    hd4k: true,
+    getMovieUrl: (id: number) => `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}?autoPlay=true`,
+    getAnimeUrl: (malId: number, e: number) => `https://vidsrc.cc/v2/embed/anime/${malId}/${e}/sub?autoPlay=true`,
   },
   {
     name: 'MultiEmbed',
@@ -51,16 +63,36 @@ const PROVIDERS: ProviderDef[] = [
     getAnimeUrl: (malId: number, e: number) => `https://multiembed.mov/?video_id=${malId}&mal=1&e=${e}`,
   },
   {
-    name: 'Embed.su',
-    getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
-    getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
-  },
-  {
     // Jediný s predvolenými titulkami (ds_lang)
     name: 'VidSrc',
     getMovieUrl: (id: number) => `https://vidsrc.xyz/embed/movie?tmdb=${id}&ds_lang=${SUB_LANG}&autoplay=1`,
     getTvUrl: (id: number, s: number, e: number) =>
       `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}&ds_lang=${SUB_LANG}&autoplay=1`,
+  },
+  {
+    name: 'VidSrc.to',
+    getMovieUrl: (id: number) => `https://vidsrc.to/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    name: '2Embed',
+    getMovieUrl: (id: number) => `https://www.2embed.cc/embed/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+  },
+  {
+    name: 'MoviesAPI',
+    getMovieUrl: (id: number) => `https://moviesapi.club/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://moviesapi.club/tv/${id}-${s}-${e}`,
+  },
+  {
+    name: 'VidJoy',
+    getMovieUrl: (id: number) => `https://vidjoy.pro/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidjoy.pro/embed/tv/${id}/${s}/${e}`,
+  },
+  {
+    name: 'Embed.su',
+    getMovieUrl: (id: number) => `https://embed.su/embed/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`,
   },
   {
     name: 'AutoEmbed',
@@ -97,9 +129,10 @@ export async function GET(request: NextRequest) {
   // Anime vedia prehrať len provideri s podporou MAL id
   const available = type === 'anime' ? PROVIDERS.filter((p) => p.getAnimeUrl) : PROVIDERS
 
-  const providers: { name: string; url: string; kind: 'embed' | 'file' }[] = available.map((provider) => ({
+  const providers: { name: string; url: string; kind: 'embed' | 'file'; hd4k?: boolean }[] = available.map((provider) => ({
     name: provider.name,
     kind: 'embed',
+    hd4k: provider.hd4k,
     url:
       type === 'movie'
         ? provider.getMovieUrl(id)
@@ -122,7 +155,8 @@ export async function GET(request: NextRequest) {
     }
     const plexUrl = await findPlexStream({ type, tmdbId: id, title, year, season: s, episode: e })
     if (plexUrl) {
-      providers.unshift({ name: 'Plex', url: plexUrl, kind: 'file' })
+      // Vlastná knižnica = najvyššia kvalita (podľa súboru, bežne až 4K)
+      providers.unshift({ name: 'Plex', url: plexUrl, kind: 'file', hd4k: true })
     }
   }
 
