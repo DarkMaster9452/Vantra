@@ -20,10 +20,10 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
       tabIndex={0}
       role="button"
       aria-label={title}
-      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1"
+      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card outline-none transition-transform duration-200 ease-out hover:-translate-y-1 focus-visible:scale-110 focus-visible:z-10"
     >
       {/* Poster */}
-      <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-lg">
+      <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-lg group-focus-visible/card:shadow-2xl group-focus-visible/card:shadow-black">
         {anime.coverImage.large ? (
           <Image
             src={anime.coverImage.large}
@@ -44,7 +44,7 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
         </div>
 
         {/* Overlay pri hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-4">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 group-focus-visible/card:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end pb-4">
           <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg shadow-red-900/50 mb-2">
             <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
@@ -53,7 +53,7 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
         </div>
 
         {/* Red border on hover */}
-        <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 transition-colors duration-300" />
+        <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 group-focus-visible/card:border-[3px] group-focus-visible/card:border-white transition-colors duration-200" />
       </div>
 
       {/* Info */}

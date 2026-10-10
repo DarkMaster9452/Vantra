@@ -72,8 +72,9 @@ export default function Hero({ media }: HeroProps) {
         {/* Buttons */}
         <div className="flex gap-3">
           <button
+            data-tv-autofocus
             onClick={() => router.push(`/watch/${type}/${media.id}`)}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-900/40 hover:shadow-red-800/50 hover:scale-105"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-lg font-bold px-10 py-3.5 rounded-lg outline-none transition-[background-color,transform] duration-150 shadow-lg shadow-red-900/40 hover:scale-105 focus-visible:scale-105 focus-visible:ring-4 focus-visible:ring-white"
           >
             <Play className="w-5 h-5 fill-white" />
             Play
@@ -81,7 +82,7 @@ export default function Hero({ media }: HeroProps) {
 
           <button
             onClick={() => router.push(`/${type}/${media.id}`)}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-lg transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/40"
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3.5 rounded-lg outline-none transition-[background-color,transform] duration-150 backdrop-blur-sm border border-white/20 hover:border-white/40 focus-visible:scale-105 focus-visible:bg-white focus-visible:text-black"
           >
             <Info className="w-5 h-5" />
             More Info

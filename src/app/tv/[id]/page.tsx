@@ -7,6 +7,7 @@ import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { Play, Tv } from 'lucide-react'
 import WatchlistButton from '@/components/media/WatchlistButton'
+import TrailerButton from '@/components/media/TrailerButton'
 import MediaCard from '@/components/media/MediaCard'
 
 export default function TVDetailPage() {
@@ -185,10 +186,11 @@ export default function TVDetailPage() {
             )}
 
             {/* Tlačidlá */}
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={() => handlePlay(1)}
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-900/30"
+                data-tv-autofocus
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-lg font-bold px-10 py-3.5 rounded-lg outline-none transition-[background-color,transform] duration-150 shadow-lg shadow-red-900/30 focus-visible:scale-105 focus-visible:bg-red-500 focus-visible:ring-4 focus-visible:ring-white"
               >
                 <Play className="w-5 h-5 fill-white" />
                 Play S{selectedSeason}E1
@@ -200,6 +202,8 @@ export default function TVDetailPage() {
                 title={show.name}
                 posterPath={show.poster_path || ''}
               />
+
+              {trailer && <TrailerButton youtubeKey={trailer.key} />}
             </div>
 
             {/* Cast */}
@@ -237,24 +241,6 @@ export default function TVDetailPage() {
           </div>
         </div>
 
-        {/* Trailer */}
-        {trailer && (
-          <div className="mt-8 max-w-4xl">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="w-1 h-5 bg-red-500 rounded-full inline-block"></span>
-              Trailer
-            </h3>
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-zinc-800">
-              <iframe
-                src={`https://www.youtube.com/embed/${trailer.key}`}
-                title="Trailer"
-                className="w-full h-full"
-                allowFullScreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Season/Episode selector */}
         <div className="mt-8 max-w-4xl">
@@ -274,7 +260,7 @@ export default function TVDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <div id="seasons-scroll" className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            <div id="seasons-scroll" data-tv-row className="flex gap-2 overflow-x-auto scrollbar-hide p-1">
               {seasons.map((s: any) => (
                 <button
                   key={s.season_number}
@@ -319,11 +305,11 @@ export default function TVDetailPage() {
                 return (
                   <div
                     key={ep.episode_number}
-                    onClick={() => aired && setSelectedEpisode(ep.episode_number)}
+                    onClick={() => aired && handlePlay(ep.episode_number)}
                     tabIndex={aired ? 0 : -1}
                     role="button"
                     aria-label={`Episode ${ep.episode_number}`}
-                    className={`flex gap-4 p-3 rounded-xl border transition-all duration-200 ${
+                    className={`flex gap-4 p-3 rounded-xl border outline-none transition-[background-color,border-color,transform] duration-150 focus-visible:scale-[1.015] focus-visible:border-white focus-visible:bg-zinc-800 ${
                       !aired
                         ? 'opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/30'
                         : isSelected
@@ -370,6 +356,7 @@ export default function TVDetailPage() {
                         </div>
                         {aired ? (
                           <button
+                            tabIndex={-1}
                             onClick={(e) => { e.stopPropagation(); handlePlay(ep.episode_number) }}
                             className="flex-shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors duration-200"
                           >
@@ -452,7 +439,7 @@ export default function TVDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div id="tv-similar-scroll" className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              <div id="tv-similar-scroll" data-tv-row className="flex gap-3 overflow-x-auto scrollbar-hide py-4 -my-2 px-1">
                 {similar.map((item: any) => (
                   <MediaCard key={item.id} media={{ ...item, media_type: 'tv' }} />
                 ))}

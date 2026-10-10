@@ -45,13 +45,13 @@ export default function Navbar() {
       }`}>
         {/* Logo */}
         <div className="flex items-center gap-8">
-          <h1
+          <button
             onClick={() => router.push('/home')}
-            className="text-white text-2xl font-bold tracking-widest cursor-pointer transition-colors duration-200 hover:text-red-500"
+            className="text-white text-2xl font-bold tracking-widest cursor-pointer transition-colors duration-200 hover:text-red-500 focus-visible:text-red-500 rounded-md px-1"
             style={{ letterSpacing: '0.2em' }}
           >
             VANTRA
-          </h1>
+          </button>
 
           {/* Nav links */}
           <div className="hidden md:flex items-center gap-6">
@@ -59,17 +59,17 @@ export default function Navbar() {
               <button
                 key={link.href}
                 onClick={() => router.push(link.href)}
-                className={`text-sm font-medium transition-colors duration-200 relative group ${
+                className={`text-sm font-medium transition-colors duration-200 relative group rounded-md px-2 py-1 focus-visible:text-white focus-visible:bg-white/10 ${
                   pathname + (typeof window !== 'undefined' ? window.location.search : '') === link.match
                     ? 'text-white'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 {link.label}
-                <span className={`absolute -bottom-1 left-0 h-0.5 bg-red-500 transition-all duration-200 ${
+                <span className={`absolute -bottom-0.5 left-2 right-2 h-0.5 bg-red-500 transition-all duration-200 ${
                   pathname + (typeof window !== 'undefined' ? window.location.search : '') === link.match
-                    ? 'w-full'
-                    : 'w-0 group-hover:w-full'
+                    ? 'opacity-100'
+                    : 'opacity-0 group-hover:opacity-100'
                 }`} />
               </button>
             ))}
@@ -80,7 +80,8 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setSearchOpen(true)}
-            className="text-zinc-400 hover:text-red-500 transition-colors duration-200"
+            aria-label="Search"
+            className="text-zinc-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full focus-visible:bg-white focus-visible:text-black"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -88,7 +89,7 @@ export default function Navbar() {
           {isAdmin && (
             <button
               onClick={() => router.push('/admin')}
-              className="text-zinc-400 hover:text-red-500 transition-colors duration-200"
+              className="text-zinc-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full focus-visible:bg-white focus-visible:text-black"
               title="Správa účtov"
             >
               <Shield className="w-5 h-5" />
@@ -97,14 +98,16 @@ export default function Navbar() {
 
           <button
             onClick={() => router.push('/profile')}
-            className="text-zinc-400 hover:text-red-500 transition-colors duration-200"
+            aria-label="Profile"
+            className="text-zinc-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full focus-visible:bg-white focus-visible:text-black"
           >
             <User className="w-5 h-5" />
           </button>
 
           <button
             onClick={handleLogout}
-            className="text-zinc-400 hover:text-red-500 transition-colors duration-200"
+            aria-label="Log out"
+            className="text-zinc-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full focus-visible:bg-white focus-visible:text-black"
           >
             <LogOut className="w-5 h-5" />
           </button>

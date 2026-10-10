@@ -49,7 +49,7 @@ export default function AnimePage() {
         {/* Trending */}
         <div className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Trending Anime</h2>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+          <div data-tv-row className="flex gap-3 overflow-x-auto scrollbar-hide px-1 py-4 -my-2">
             {trending.map((anime: any) => (
               <AnimeCard key={anime.id} anime={anime} />
             ))}
@@ -59,7 +59,7 @@ export default function AnimePage() {
         {/* Popular */}
         <div className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Most Popular</h2>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+          <div data-tv-row className="flex gap-3 overflow-x-auto scrollbar-hide px-1 py-4 -my-2">
             {popular.map((anime: any) => (
               <AnimeCard key={anime.id} anime={anime} />
             ))}
@@ -69,7 +69,7 @@ export default function AnimePage() {
         {/* Top Rated */}
         <div className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Top Rated</h2>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+          <div data-tv-row className="flex gap-3 overflow-x-auto scrollbar-hide px-1 py-4 -my-2">
             {topRated.map((anime: any) => (
               <AnimeCard key={anime.id} anime={anime} />
             ))}

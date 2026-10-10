@@ -7,6 +7,7 @@ import Navbar from '@/components/layout/Navbar'
 import Image from 'next/image'
 import { Play, Clock, Calendar, DollarSign } from 'lucide-react'
 import WatchlistButton from '@/components/media/WatchlistButton'
+import TrailerButton from '@/components/media/TrailerButton'
 import MediaCard from '@/components/media/MediaCard'
 
 export default function MovieDetailPage() {
@@ -161,10 +162,11 @@ export default function MovieDetailPage() {
             )}
 
             {/* Tlačidlá */}
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={() => router.push(`/watch/movie/${movie.id}`)}
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-900/30"
+                data-tv-autofocus
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-lg font-bold px-10 py-3.5 rounded-lg outline-none transition-[background-color,transform] duration-150 shadow-lg shadow-red-900/30 focus-visible:scale-105 focus-visible:bg-red-500 focus-visible:ring-4 focus-visible:ring-white"
               >
                 <Play className="w-5 h-5 fill-white" />
                 Play
@@ -176,6 +178,8 @@ export default function MovieDetailPage() {
                 title={movie.title}
                 posterPath={movie.poster_path || ''}
               />
+
+              {trailer && <TrailerButton youtubeKey={trailer.key} />}
             </div>
 
             {/* Cast */}
@@ -213,24 +217,6 @@ export default function MovieDetailPage() {
           </div>
         </div>
 
-        {/* Trailer */}
-        {trailer && (
-          <div className="mt-8 max-w-4xl">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="w-1 h-5 bg-red-500 rounded-full inline-block"></span>
-              Trailer
-            </h3>
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-zinc-800">
-              <iframe
-                src={`https://www.youtube.com/embed/${trailer.key}`}
-                title="Trailer"
-                className="w-full h-full"
-                allowFullScreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Backdrops */}
         {backdrops.length > 0 && (
@@ -292,7 +278,7 @@ export default function MovieDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div id="similar-scroll" className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              <div id="similar-scroll" data-tv-row className="flex gap-3 overflow-x-auto scrollbar-hide py-4 -my-2 px-1">
                 {similar.map((item: any) => (
                   <MediaCard key={item.id} media={{ ...item, media_type: 'movie' }} />
                 ))}
