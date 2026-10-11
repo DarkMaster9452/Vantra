@@ -110,9 +110,10 @@ export default function LoginPage() {
           <h2 className="text-white text-2xl md:text-3xl font-bold mb-10">Kto pozerá?</h2>
 
           <div className="flex flex-wrap justify-center gap-6 max-w-3xl">
-            {profiles.filter((p) => p.has_pin).map((profile) => (
+            {profiles.filter((p) => p.has_pin).map((profile, index) => (
               <button
                 key={profile.id}
+                data-tv-autofocus={index === 0 ? '' : undefined}
                 onClick={() => { setSelected(profile); setPin(''); setError('') }}
                 className="group flex flex-col items-center gap-3 outline-none"
               >
@@ -164,6 +165,7 @@ export default function LoginPage() {
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
               <button
                 key={digit}
+                data-tv-autofocus={digit === '5' ? '' : undefined}
                 onClick={() => pressDigit(digit)}
                 disabled={loading}
                 className="h-14 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xl font-semibold hover:bg-zinc-800 hover:border-zinc-600 focus-visible:bg-zinc-800 transition-colors disabled:opacity-50"

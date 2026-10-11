@@ -150,7 +150,7 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
             onChar={(c) => setQuery((q) => q + c)}
             onBackspace={() => setQuery((q) => q.slice(0, -1))}
             onClear={() => setQuery('')}
-            onSearch={goSearch}
+            onSubmit={goSearch}
           />
 
           <p className="text-zinc-600 text-xs mt-5">

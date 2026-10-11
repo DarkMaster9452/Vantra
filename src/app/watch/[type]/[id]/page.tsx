@@ -1,20 +1,24 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { useHistory } from '@/hooks/useHistory'
-import { registerBackHandler } from '@/components/tv/backHandler'
 import VideoPlayer from '@/components/player/VideoPlayer'
+import PlayerOverlay, { type PlayerMode, type SourceOption } from '@/components/player/PlayerOverlay'
+import { useEmbedPlayback, useVideoPlayback } from '@/components/player/playback'
+import { hasPlayerBridge } from '@/components/tv/tvMode'
 
-interface Provider {
-  name: string
-  url: string
-  kind?: 'embed' | 'file'
+interface Season {
+  season_number: number
+  episode_count: number
 }
 
-// Po tomto čase nečinnosti sa horná lišta schová a ovládač prejde na prehrávač
-const BAR_HIDE_DELAY = 4000
+interface EpisodeRef {
+  season: number
+  episode: number
+}
+
+const subscribeNoop = () => () => {}
 
 export default function WatchPage() {
   const params = useParams()
@@ -24,82 +28,86 @@ export default function WatchPage() {
 
   const type = params.type as string
   const id = params.id as string
-  const season = searchParams.get('season') || '1'
-  const episode = searchParams.get('episode') || '1'
+  const season = parseInt(searchParams.get('season') || '1')
+  const episode = parseInt(searchParams.get('episode') || '1')
+  const anilistId = searchParams.get('anilistId')
 
-  const [providers, setProviders] = useState<Provider[]>([])
-  const [activeProvider, setActiveProvider] = useState<Provider | null>(null)
+  const [providers, setProviders] = useState<SourceOption[]>([])
+  const [activeProvider, setActiveProvider] = useState<SourceOption | null>(null)
+  // Zvyšuje sa pri "Reload" – nový key = nový iframe/video
+  const [reloadKey, setReloadKey] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [barVisible, setBarVisible] = useState(true)
+  const [title, setTitle] = useState('')
+  const [seasons, setSeasons] = useState<Season[]>([])
+  const [totalEpisodes, setTotalEpisodes] = useState<number | null>(null)
+  // Bridge z Android TV appky (na serveri vždy false, na klientovi podľa okna)
+  const bridge = useSyncExternalStore(subscribeNoop, hasPlayerBridge, () => false)
 
-  const barVisibleRef = useRef(true)
-  const barRef = useRef<HTMLDivElement>(null)
-  const backButtonRef = useRef<HTMLButtonElement>(null)
-  // Prvok, ktorému sa odovzdáva focus ovládača: iframe embedu alebo
-  // kontajner vlastného video prehrávača (Plex)
-  const playerRef = useRef<HTMLElement | null>(null)
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const remoteKeyRef = useRef<((key: string, repeat: boolean) => void) | null>(null)
 
-  useEffect(() => {
-    barVisibleRef.current = barVisible
-  }, [barVisible])
-
-  const scheduleHide = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current)
-    hideTimer.current = setTimeout(function tick() {
-      // Kým používateľ stojí na lište (prepína zdroje), nechaj ju zobrazenú
-      const active = document.activeElement
-      if (active && barRef.current?.contains(active)) {
-        hideTimer.current = setTimeout(tick, BAR_HIDE_DELAY)
-        return
-      }
-      setBarVisible(false)
-      playerRef.current?.focus()
-    }, BAR_HIDE_DELAY)
-  }, [])
-
-  const showBar = useCallback(() => {
-    setBarVisible(true)
-    scheduleHide()
-  }, [scheduleHide])
+  const isFile = activeProvider?.kind === 'file'
+  const sourceKey = `${activeProvider?.url ?? ''}#${reloadKey}`
+  const onRemoteKey = useCallback((key: string, repeat: boolean) => remoteKeyRef.current?.(key, repeat), [])
+  const embed = useEmbedPlayback(iframeRef, sourceKey, onRemoteKey)
+  const video = useVideoPlayback(videoRef, sourceKey)
+  const playback = isFile ? video : embed
+  const mode: PlayerMode = isFile ? 'video' : bridge ? 'bridge' : 'fallback'
 
   useEffect(() => {
     const fetchStream = async () => {
       setLoading(true)
       try {
-        // Najprv TMDB detail – titul a rok idú do stream API kvôli
-        // vyhľadaniu v Plex knižnici, a rovno poslúžia aj pre históriu
-        let title = ''
+        // Najprv metadáta – titul a rok idú do stream API kvôli vyhľadaniu
+        // v Plex knižnici, a rovno poslúžia aj pre históriu a ďalšiu epizódu
+        let name = ''
         let year = ''
         let posterPath = ''
+        let historyId = parseInt(id)
         try {
-          const tmdbRes = await fetch(`/api/tmdb?type=${type === 'movie' ? 'movie-detail' : 'tv-detail'}&id=${id}`)
-          if (tmdbRes.ok) {
-            const tmdbData = await tmdbRes.json()
-            title = tmdbData.title || tmdbData.name || ''
-            year = (tmdbData.release_date || tmdbData.first_air_date || '').slice(0, 4)
-            posterPath = tmdbData.poster_path || ''
+          if (type === 'anime') {
+            if (anilistId) {
+              const res = await fetch(`/api/anilist?type=detail&id=${anilistId}`)
+              if (res.ok) {
+                const data = await res.json()
+                name = data.title?.english || data.title?.romaji || ''
+                posterPath = data.coverImage?.large || ''
+                setTotalEpisodes(data.episodes || null)
+                historyId = parseInt(anilistId)
+              }
+            }
+          } else {
+            const res = await fetch(`/api/tmdb?type=${type === 'movie' ? 'movie-detail' : 'tv-detail'}&id=${id}`)
+            if (res.ok) {
+              const data = await res.json()
+              name = data.title || data.name || ''
+              year = (data.release_date || data.first_air_date || '').slice(0, 4)
+              posterPath = data.poster_path || ''
+              if (type === 'tv') setSeasons((data.seasons || []).filter((s: Season) => s.season_number > 0))
+            }
           }
         } catch {
           // stream ide aj bez metadát
         }
+        setTitle(name)
 
         const url =
           `/api/stream?id=${id}&type=${type}&season=${season}&episode=${episode}` +
-          `&title=${encodeURIComponent(title)}&year=${year}`
+          `&title=${encodeURIComponent(type === 'anime' ? '' : name)}&year=${year}`
         const res = await fetch(url)
         const data = await res.json()
         setProviders(data.providers || [])
         setActiveProvider(data.primary || null)
 
-        if (title) {
+        if (name) {
           await addToHistory(
-            parseInt(id),
+            historyId,
             type,
-            title,
+            name,
             posterPath,
-            type === 'tv' ? parseInt(season) : undefined,
-            type === 'tv' ? parseInt(episode) : undefined
+            type === 'movie' ? undefined : season,
+            type === 'movie' ? undefined : episode
           )
         }
       } catch {
@@ -110,88 +118,60 @@ export default function WatchPage() {
     }
 
     fetchStream()
-  }, [id, type, season, episode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, type, season, episode, anilistId])
 
-  // Po načítaní streamu sa lišta po chvíli schová a ovládač prejde na prehrávač
-  useEffect(() => {
-    if (!loading && activeProvider) scheduleHide()
-    return () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current)
+  // Ďalšia epizóda: v rámci série, inak prvá epizóda ďalšej série
+  let next: EpisodeRef | null = null
+  if (type === 'tv' && seasons.length) {
+    const current = seasons.find((s) => s.season_number === season)
+    if (current && episode < current.episode_count) next = { season, episode: episode + 1 }
+    else {
+      const following = seasons.find((s) => s.season_number > season && s.episode_count > 0)
+      if (following) next = { season: following.season_number, episode: 1 }
     }
-  }, [loading, activeProvider, scheduleHide])
+  } else if (type === 'anime' && (totalEpisodes === null || episode < totalEpisodes)) {
+    next = { season: 1, episode: episode + 1 }
+  }
 
-  // Tlačidlo Späť (Android TV / Escape): pri schovanej lište najprv ukáž menu,
-  // až druhé stlačenie opustí prehrávanie
-  useEffect(
-    () =>
-      registerBackHandler(() => {
-        if (!barVisibleRef.current) {
-          setBarVisible(true)
-          scheduleHide()
-          // Focus až po rendri – kým je lišta invisible, focus() by sa ignoroval
-          setTimeout(() => backButtonRef.current?.focus(), 50)
-          return true
-        }
-        return false
-      }),
-    [scheduleHide]
-  )
+  const goNext = useCallback(() => {
+    if (!next) return
+    const query =
+      type === 'anime'
+        ? `episode=${next.episode}${anilistId ? `&anilistId=${anilistId}` : ''}`
+        : `season=${next.season}&episode=${next.episode}`
+    // replace: Späť z prehrávača vedie rovno na detail, nie cez všetky epizódy
+    router.replace(`/watch/${type}/${id}?${query}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [next?.season, next?.episode, type, id, anilistId, router])
 
-  // Pohyb myšou ukáže lištu (desktop)
-  useEffect(() => {
-    const onMouseMove = () => {
-      if (!barVisibleRef.current) showBar()
-    }
-    document.addEventListener('mousemove', onMouseMove)
-    return () => document.removeEventListener('mousemove', onMouseMove)
-  }, [showBar])
+  const exit = useCallback(() => router.back(), [router])
 
-  // Keď je lišta schovaná a klávesa príde mimo prehrávača, vráť focus prehrávaču
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (barVisibleRef.current) return
-      if (e.key === 'Escape' || e.key === 'Backspace') return // rieši back handler
-      const player = playerRef.current
-      if (player && !player.contains(document.activeElement) && document.activeElement !== player) {
-        e.preventDefault()
-        player.focus()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
+  const subtitle =
+    type === 'tv' ? `Season ${season} · Episode ${episode}` : type === 'anime' ? `Episode ${episode}` : undefined
+  const nextLabel = next ? (type === 'tv' ? `S${next.season}:E${next.episode}` : `Episode ${next.episode}`) : undefined
 
   return (
-    <div className="fixed inset-0 bg-black">
-      {/* Player na celú obrazovku */}
+    <div className="fixed inset-0 bg-black overflow-hidden">
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-white text-lg">Loading...</div>
+          <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : activeProvider ? (
-        activeProvider.kind === 'file' ? (
-          // Plex: priamy stream vo vlastnom Vantra prehrávači
-          <VideoPlayer
-            key={activeProvider.url}
-            ref={(el) => {
-              playerRef.current = el
-            }}
-            src={activeProvider.url}
-          />
+        isFile ? (
+          // Plex: priamy stream
+          <VideoPlayer key={sourceKey} ref={videoRef} src={activeProvider.url} />
         ) : (
           <iframe
-            ref={(el) => {
-              playerRef.current = el
-            }}
-            key={activeProvider.url}
+            ref={iframeRef}
+            key={sourceKey}
             src={activeProvider.url}
-            tabIndex={0}
-            onFocus={() => setBarVisible(false)}
+            // V TV appke sa do iframu nikdy nedostane focus – ovládanie ide cez overlay
+            tabIndex={bridge ? -1 : 0}
             className="absolute inset-0 w-full h-full border-0"
             allowFullScreen={true}
-            allow="autoplay; fullscreen; picture-in-picture; web-share"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
-            style={{ border: 'none' }}
           />
         )
       ) : (
@@ -200,58 +180,25 @@ export default function WatchPage() {
         </div>
       )}
 
-      {/* Horná lišta – automaticky sa schováva, nech je film na celej obrazovke */}
-      <div
-        ref={barRef}
-        className={`absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black via-black/80 to-transparent transition-all duration-300 ${
-          barVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 invisible'
-        }`}
-      >
-        <button
-          ref={backButtonRef}
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white focus:text-white transition rounded-lg px-2 py-1"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-
-        <div className="flex items-center gap-2">
-          <span className="text-zinc-500 text-sm">Source:</span>
-          {providers.map((provider) => (
-            <button
-              key={provider.name}
-              onClick={() => setActiveProvider(provider)}
-              className={`px-3 py-1 rounded text-sm transition ${
-                activeProvider?.name === provider.name
-                  ? 'bg-white text-black font-bold'
-                  : provider.kind === 'file'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              {provider.name}
-            </button>
-          ))}
-
-          <button
-            onClick={() => activeProvider && setActiveProvider({ ...activeProvider })}
-            className="p-1 text-zinc-400 hover:text-white focus:text-white transition rounded-lg"
-            aria-label="Reload stream"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Nápoveda k ovládaniu – viditeľná len spolu s lištou */}
-      <div
-        className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-zinc-400 text-xs bg-black/70 px-4 py-2 rounded-full transition-opacity duration-300 pointer-events-none ${
-          barVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        ▼ / OK — control the player · Back — show menu / exit
-      </div>
+      {!loading && (
+        <PlayerOverlay
+          key={`overlay-${sourceKey}`}
+          mode={mode}
+          state={playback.state}
+          controls={playback.controls}
+          title={title || (type === 'anime' ? 'Anime' : '')}
+          subtitle={subtitle}
+          sources={providers}
+          activeSource={activeProvider}
+          onSelectSource={(source) => setActiveProvider(source)}
+          onReload={() => setReloadKey((k) => k + 1)}
+          onNext={next ? goNext : null}
+          nextLabel={nextLabel}
+          onExit={exit}
+          iframeRef={iframeRef}
+          remoteKeyRef={remoteKeyRef}
+        />
+      )}
     </div>
   )
 }

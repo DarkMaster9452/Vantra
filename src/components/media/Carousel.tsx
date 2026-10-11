@@ -56,7 +56,8 @@ export default function Carousel({ title, items, href }: CarouselProps) {
         {/* Filmy */}
         <div
           ref={rowRef}
-          className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-8 pb-2"
+          data-tv-row
+          className="flex gap-3 overflow-x-auto scrollbar-hide px-4 md:px-8 py-4 -my-2"
         >
           {items.map((item) => (
             <MediaCard key={item.id} media={item} />

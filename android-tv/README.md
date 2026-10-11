@@ -7,6 +7,8 @@ zobrazí ako normálna aplikácia s ikonou v launcheri.
 
 1. Na GitHube otvor **Actions → Build Android TV APK → Run workflow**.
 2. Do poľa `app_url` zadaj URL svojej nasadenej Vantry (napr. `https://vantra.vercel.app`).
+   Musí to byť finálna adresa (bez presmerovania na inú doménu) – appka z bezpečnosti
+   nepustí hlavnú stránku na žiadnu inú doménu.
 3. Po dobehnutí buildu si zo stránky workflow runu stiahni artefakt **vantra-tv-apk**
    (je to zip, vo vnútri je `app-debug.apk`).
 
@@ -28,5 +30,29 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 
 ## Ovládanie
 
-- Šípky na ovládači = pohyb po stránke, OK = klik, Späť = o krok späť v appke.
-- Fullscreen video z prehrávača funguje (tlačidlo fullscreen v prehrávači).
+- **Šípky** = pohyb po stránke (ako Netflix / Disney+), **OK** = klik, **Späť** = o krok späť.
+  Riadky si pamätajú, kde si skončil; po otvorení stránky je focus rovno na hlavnom tlačidle.
+- **Textové polia** (login, vyhľadávanie, profil, admin): OK otvorí vlastnú on-screen
+  klávesnicu – systémová TV klávesnica ani „napíš cez telefón“ sa nikdy neotvorí.
+
+### Prehrávač
+
+| Tlačidlo | Akcia |
+|---|---|
+| OK | play / pauza (ak prehrávač ešte nebeží, spustí ho) |
+| ◀ / ▶ | posun −10 s / +10 s (držanie zrýchľuje) |
+| ▲ / ▼ | ukáže ovládanie (zdroj, ďalšia epizóda, reload, kurzor) |
+| Play/Pause, ⏩, ⏪, ⏭ | fungujú vždy |
+| Späť | zavrie panel / kurzor, inak ukončí prehrávanie |
+
+- **Hlasitosť** vo vnútri prehrávačov je zamknutá na 100 % a nedá sa zmeniť ani stlmiť –
+  hlasitosť sa rieši ovládačom TV.
+- **Reklamy**: popupy (`window.open`), presmerovania, `intent://` odkazy a známe reklamné
+  siete sú zablokované; klik do prehrávača ide cez Vantru, takže neodpáli „neviditeľnú“ reklamu.
+- **Kurzor** (ikona šípky v ovládaní): virtuálna myš na ovládanie menu samotného
+  prehrávača (výber servera, titulky…). Šípky hýbu, OK klikne, Späť skončí.
+- Po skončení epizódy sa po 10 s spustí ďalšia (dá sa zrušiť).
+
+Ako to funguje: appka vkladá `app/src/main/assets/bridge.js` do každého rámca vrátane
+cross-origin iframov embed prehrávačov (`WebViewCompat.addDocumentStartJavaScript`).
+Potrebuje aktuálny Android System WebView (Google Play ho aktualizuje automaticky).

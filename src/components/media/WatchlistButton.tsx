@@ -1,7 +1,7 @@
 'use client'
 
 import { useWatchlist } from '@/hooks/useWatchlist'
-import { Bookmark, BookmarkCheck } from 'lucide-react'
+import { Check, Plus } from 'lucide-react'
 
 interface WatchlistButtonProps {
   tmdbId: number
@@ -10,31 +10,29 @@ interface WatchlistButtonProps {
   posterPath: string
 }
 
+// Kompaktné okrúhle tlačidlo vedľa Play (ako "+" na Disney+ / Netflixe),
+// popis sa ukáže pri focuse/hoveri
 export default function WatchlistButton({ tmdbId, mediaType, title, posterPath }: WatchlistButtonProps) {
   const { isInWatchlist, loading, toggleWatchlist } = useWatchlist(tmdbId, mediaType)
 
-  if (loading) return null
+  const label = isInWatchlist ? 'In My List' : 'Add to My List'
 
   return (
     <button
       onClick={() => toggleWatchlist(title, posterPath)}
-      className={`inline-flex items-center gap-2 font-bold px-6 py-3 rounded-lg transition-all duration-200 border ${
+      disabled={loading}
+      aria-label={label}
+      title={label}
+      className={`group/wl relative flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center border-2 outline-none transition-[background-color,border-color,transform] duration-150 focus-visible:scale-110 focus-visible:bg-white focus-visible:text-black focus-visible:border-white disabled:opacity-40 ${
         isInWatchlist
-          ? 'bg-red-600/20 text-red-400 border-red-500/50 hover:bg-red-600/30'
-          : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/40'
+          ? 'bg-white/15 text-white border-white/70 hover:border-white'
+          : 'bg-black/30 text-white border-white/40 hover:border-white'
       }`}
     >
-      {isInWatchlist ? (
-        <>
-          <BookmarkCheck className="w-5 h-5" />
-          In Watchlist
-        </>
-      ) : (
-        <>
-          <Bookmark className="w-5 h-5" />
-          Add to Watchlist
-        </>
-      )}
+      {isInWatchlist ? <Check className="w-5 h-5" /> : <Plus className="w-6 h-6" />}
+      <span className="pointer-events-none absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover/wl:opacity-100 group-focus-visible/wl:opacity-100 transition-opacity">
+        {label}
+      </span>
     </button>
   )
 }

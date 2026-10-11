@@ -41,10 +41,10 @@ export default function MediaCard({ media }: MediaCardProps) {
       tabIndex={0}
       role="button"
       aria-label={title}
-      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1"
+      className="relative flex-shrink-0 w-36 md:w-44 cursor-pointer group/card outline-none transition-transform duration-200 ease-out hover:-translate-y-1 focus-visible:scale-110 focus-visible:z-10"
     >
       {/* Poster */}
-      <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-lg">
+      <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-lg group-focus-visible/card:shadow-2xl group-focus-visible/card:shadow-black">
         {media.poster_path ? (
           <Image
             src={`${TMDB_IMAGE_BASE}/w342${media.poster_path}`}
@@ -75,12 +75,12 @@ export default function MediaCard({ media }: MediaCardProps) {
         </div>
 
         {/* Red border on hover – len dekorácia, nesmie kradnúť kliknutia play tlačidlu */}
-        <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 group-focus-within/card:border-red-500/50 transition-colors duration-300" />
+        <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-transparent group-hover/card:border-red-500/50 group-focus-visible/card:border-[3px] group-focus-visible/card:border-white transition-colors duration-200" />
       </div>
 
       {/* Info */}
       <div className="mt-2 px-1">
-        <p className="text-white text-sm font-medium truncate group-hover/card:text-red-400 transition-colors duration-200">{title}</p>
+        <p className="text-white text-sm font-medium truncate group-hover/card:text-red-400 group-focus-visible/card:text-white transition-colors duration-200">{title}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className="text-red-500 text-xs font-semibold">★ {rating}</span>
           {year && <span className="text-zinc-500 text-xs">{year}</span>}

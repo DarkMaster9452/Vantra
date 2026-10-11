@@ -15,7 +15,7 @@ export default function AnimeDetailPage() {
   const [anime, setAnime] = useState<any>(null)
   const [episodeData, setEpisodeData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedEpisode, setSelectedEpisode] = useState(1)
+  const [selectedEpisode] = useState(1)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -145,10 +145,11 @@ export default function AnimeDetailPage() {
             </p>
 
             {/* Tlačidlá */}
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={() => handlePlay(1)}
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-900/30"
+                data-tv-autofocus
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-lg font-bold px-10 py-3.5 rounded-lg outline-none transition-[background-color,transform] duration-150 shadow-lg shadow-red-900/30 focus-visible:scale-105 focus-visible:bg-red-500 focus-visible:ring-4 focus-visible:ring-white"
               >
                 <Play className="w-5 h-5 fill-white" />
                 Play E1
@@ -183,11 +184,11 @@ export default function AnimeDetailPage() {
               return (
                 <div
                   key={epNum}
-                  onClick={() => aired && setSelectedEpisode(epNum)}
+                  onClick={() => aired && handlePlay(epNum)}
                   tabIndex={aired ? 0 : -1}
                   role="button"
                   aria-label={`Episode ${epNum}`}
-                  className={`flex gap-4 p-3 rounded-xl border transition-all duration-200 ${
+                  className={`flex gap-4 p-3 rounded-xl border outline-none transition-[background-color,border-color,transform] duration-150 focus-visible:scale-[1.015] focus-visible:border-white focus-visible:bg-zinc-800 ${
                     !aired
                       ? 'opacity-40 cursor-not-allowed border-zinc-800 bg-zinc-900/30'
                       : isSelected
@@ -214,6 +215,7 @@ export default function AnimeDetailPage() {
 
                     {aired ? (
                       <button
+                        tabIndex={-1}
                         onClick={(e) => { e.stopPropagation(); handlePlay(epNum) }}
                         className="flex-shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors duration-200"
                       >
