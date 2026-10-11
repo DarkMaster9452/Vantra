@@ -171,10 +171,10 @@ export default function TVInputKeyboard() {
 
   return (
     <div data-tv-trap className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70" style={{ animation: 'fadeIn 0.15s ease forwards' }}>
-      <div ref={panelRef} className="w-full bg-zinc-950 border-t border-zinc-800 px-6 md:px-16 pt-6 pb-8 flex flex-col items-center gap-5 shadow-2xl">
+      <div ref={panelRef} className="w-full bg-[#0d0d12]/95 backdrop-blur-xl border-t border-white/10 rounded-t-3xl px-6 md:px-16 pt-6 pb-8 flex flex-col items-center gap-5 shadow-2xl">
         <div className="w-full max-w-xl">
           <p className="text-zinc-400 text-sm mb-2">{labelFor(target)}</p>
-          <div className="flex items-center gap-3 bg-zinc-900 border-2 border-zinc-700 rounded-xl px-5 py-3 min-h-[60px]">
+          <div className="flex items-center gap-3 bg-white/[0.06] border border-white/15 rounded-2xl px-5 py-3 min-h-[60px]">
             <div className="flex-1 text-white text-2xl font-medium break-all">
               {shown || <span className="text-zinc-600 text-xl">{target.placeholder}</span>}
               <span className="caret-blink text-red-500 font-light">|</span>

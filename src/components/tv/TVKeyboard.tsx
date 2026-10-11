@@ -31,7 +31,7 @@ const SYMBOLS = '!@#$%^&*()-_=+[]{};:\'",.<>/?\\|`~'
 const EMAIL_EXTRAS = ['@', '.', '_', '-', '.com', '.sk']
 
 const keyClass =
-  'flex items-center justify-center h-12 rounded-lg bg-zinc-900 border border-zinc-800 ' +
+  'flex items-center justify-center h-12 rounded-xl bg-white/[0.06] border border-white/10 ' +
   'text-zinc-200 text-lg font-medium transition-[background-color,transform] duration-100 ' +
   'hover:bg-zinc-700 hover:text-white focus-visible:bg-white focus-visible:text-black ' +
   'focus-visible:scale-110 focus-visible:z-10 focus-visible:outline-none'
