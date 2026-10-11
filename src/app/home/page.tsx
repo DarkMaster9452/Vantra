@@ -42,16 +42,15 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen">
       <Navbar />
 
       {/* Hero banner */}
       <Hero media={heroMedia} />
 
-      {/* Carousely – každá kategória má View All na kompletný zoznam.
-          Bez negatívneho marginu: nadpisy majú vlastný priestor a neprelínajú
-          sa s hero bannerom */}
-      <div className="relative z-10 pt-4 pb-16">
+      {/* Carousely – každá kategória má View all na kompletný zoznam.
+          Prvý riadok mierne zasahuje do spodného prechodu hero bannera */}
+      <div className="relative z-10 -mt-6 md:-mt-10 pb-16">
         <Carousel title="Trending This Week" items={trending.results} href="/browse" />
         <Carousel title="Popular Movies" items={popularMovies.results} href="/browse?type=movie" />
         <Carousel title="Popular TV Shows" items={popularTV.results} href="/browse?type=tv" />

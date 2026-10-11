@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, X, Film, Tv } from 'lucide-react'
-import Image from 'next/image'
+import PosterCard from '@/components/media/PosterCard'
 import { TMDBMedia, TMDB_IMAGE_BASE } from '@/lib/tmdb'
 import TVKeyboard from '@/components/tv/TVKeyboard'
 import { registerBackHandler } from '@/components/tv/backHandler'
@@ -116,17 +116,17 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
     <div
       ref={overlayRef}
       data-tv-trap
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[100] bg-[#08080b]/95 backdrop-blur-xl overflow-y-auto"
       style={{ animation: 'fadeIn 0.2s ease forwards' }}
     >
       <div className="flex flex-col lg:flex-row gap-10 px-6 md:px-12 py-10 min-h-full">
         {/* Ľavý stĺpec: query + klávesnica */}
         <div className="w-full lg:w-[420px] flex-shrink-0">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-white text-xl font-bold tracking-widest">SEARCH</h2>
+            <h2 className="text-white text-2xl font-bold tracking-tight">Search</h2>
             <button
               onClick={onClose}
-              className="text-zinc-400 hover:text-white focus:text-white transition-colors duration-200 p-2 rounded-lg"
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/10 text-zinc-300 outline-none transition-[background-color,transform] hover:bg-white/20 hover:text-white focus-visible:bg-white focus-visible:text-black focus-visible:scale-110"
               aria-label="Close search"
             >
               <X className="w-6 h-6" />
@@ -134,8 +134,8 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
           </div>
 
           {/* Zobrazenie napísaného textu (bez natívneho inputu) */}
-          <div className="flex items-center gap-3 bg-zinc-900 border-2 border-zinc-700 rounded-xl px-5 py-4 mb-5 min-h-[64px]">
-            <Search className="w-6 h-6 text-red-500 flex-shrink-0" />
+          <div className="flex items-center gap-3 bg-white/[0.06] border border-white/15 rounded-2xl px-5 py-4 mb-5 min-h-[64px]">
+            <Search className="w-6 h-6 text-zinc-400 flex-shrink-0" />
             <div className="text-white text-2xl font-medium break-all">
               {query ? (
                 <span>{query}</span>
@@ -168,7 +168,7 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
             <>
               {/* Textové návrhy (max 5) */}
               <div className="mb-8">
-                <h3 className="text-zinc-400 text-sm uppercase tracking-wider mb-3">Suggestions</h3>
+                <h3 className="text-zinc-500 text-xs font-semibold uppercase tracking-[0.2em] mb-3">Suggestions</h3>
                 {suggestions.length === 0 ? (
                   <p className="text-zinc-600 text-sm">{loading ? 'Searching…' : 'No matches'}</p>
                 ) : (
@@ -177,20 +177,20 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
                       <button
                         key={`${item.media_type}-${item.id}`}
                         onClick={() => openItem(item)}
-                        className="flex items-center gap-3 text-left px-4 py-2.5 rounded-lg transition-colors duration-150 hover:bg-zinc-800 focus:bg-zinc-800"
+                        className="group/s flex items-center gap-3 text-left px-4 py-2.5 rounded-xl outline-none transition-[background-color,transform] duration-150 hover:bg-white/[0.07] focus-visible:bg-white focus-visible:scale-[1.02]"
                       >
                         {item.media_type === 'tv' ? (
                           <Tv className="w-4 h-4 text-red-500 flex-shrink-0" />
                         ) : (
                           <Film className="w-4 h-4 text-red-500 flex-shrink-0" />
                         )}
-                        <span className="text-white text-base font-medium truncate">
+                        <span className="text-white text-base font-medium truncate group-focus-visible/s:text-black">
                           {item.title || item.name}
                         </span>
                         <span className="text-zinc-500 text-xs flex-shrink-0">
                           {(item.release_date || item.first_air_date || '').slice(0, 4)}
                         </span>
-                        <span className="ml-auto text-zinc-400 text-xs uppercase border border-zinc-700 rounded px-2 py-0.5 flex-shrink-0">
+                        <span className="ml-auto text-zinc-400 text-[10px] font-semibold uppercase tracking-wider border border-white/15 rounded-full px-2 py-0.5 flex-shrink-0 group-focus-visible/s:text-zinc-700 group-focus-visible/s:border-zinc-300">
                           {item.media_type === 'tv' ? 'TV Show' : 'Movie'}
                         </span>
                       </button>
@@ -202,35 +202,22 @@ export default function SearchOverlay({ onClose }: SearchOverlayProps) {
               {/* Mriežka zhodných titulov */}
               {results.length > 0 && (
                 <div>
-                  <h3 className="text-zinc-400 text-sm uppercase tracking-wider mb-3">Titles</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <h3 className="text-zinc-500 text-xs font-semibold uppercase tracking-[0.2em] mb-3">Titles</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-6 gap-x-4 gap-y-6">
                     {results.map((item) => (
-                      <div
+                      <PosterCard
                         key={`${item.media_type}-${item.id}`}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={item.title || item.name}
-                        onClick={() => openItem(item)}
-                        className="cursor-pointer group/result"
-                      >
-                        <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 border-2 border-transparent group-hover/result:border-red-500/50 transition-colors duration-200">
-                          <Image
-                            src={`${TMDB_IMAGE_BASE}/w342${item.poster_path}`}
-                            alt={item.title || item.name || ''}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 640px) 33vw, 176px"
-                          />
-                        </div>
-                        <p className="text-white text-sm font-medium truncate mt-2">
-                          {item.title || item.name}
-                        </p>
-                        <p className="text-zinc-500 text-xs">
-                          {item.media_type === 'tv' ? 'TV Show' : 'Movie'}
-                          {(item.release_date || item.first_air_date) &&
-                            ` · ${(item.release_date || item.first_air_date)!.slice(0, 4)}`}
-                        </p>
-                      </div>
+                        fluid
+                        title={item.title || item.name || ''}
+                        image={`${TMDB_IMAGE_BASE}/w342${item.poster_path}`}
+                        subtitle={[
+                          item.media_type === 'tv' ? 'TV Show' : 'Movie',
+                          (item.release_date || item.first_air_date || '').slice(0, 4),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                        onOpen={() => openItem(item)}
+                      />
                     ))}
                   </div>
                 </div>

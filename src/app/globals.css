@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: #08080b;
   --foreground: #ededed;
   --accent: #E50914;
   --accent-hover: #f40612;
@@ -11,7 +11,19 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* Skeleton načítavanie (shimmer) */
+.skeleton {
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
 }
 
 /* Scrollbar hide */
@@ -23,19 +35,19 @@ body {
   display: none;
 }
 
-/* Custom scrollbar pre zvyšok */
+/* Tenký nenápadný scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #141414;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E50914;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #f40612;
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* TV / klávesnicová navigácia (Netflix / Disney+ štýl): biely focus ring.

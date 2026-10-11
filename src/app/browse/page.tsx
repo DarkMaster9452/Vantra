@@ -1,11 +1,21 @@
 'use client'
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MediaCard from '@/components/media/MediaCard'
 import { TMDBMedia } from '@/lib/tmdb'
 import { Search } from 'lucide-react'
+import { GridSkeleton } from '@/components/ui/Loader'
+import { ui } from '@/components/ui/styles'
+
+const FILTERS = [
+  { value: 'all', label: 'Trending', title: 'Trending' },
+  { value: 'movie', label: 'Movies', title: 'Popular movies' },
+  { value: 'tv', label: 'TV Shows', title: 'Popular TV shows' },
+  { value: 'top-movie', label: 'Top rated movies', title: 'Top rated movies' },
+  { value: 'top-tv', label: 'Top rated TV', title: 'Top rated TV shows' },
+]
 
 // useSearchParams vyžaduje Suspense boundary pri produkčnom builde
 export default function BrowsePage() {
@@ -18,6 +28,7 @@ export default function BrowsePage() {
 
 function BrowseContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const searchQuery = searchParams.get('search') || ''
   const typeFilter = searchParams.get('type') || 'all'
 
@@ -85,63 +96,70 @@ function BrowseContent() {
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && query.trim()) {
-      window.location.href = `/browse?search=${encodeURIComponent(query.trim())}`
+      router.push(`/browse?search=${encodeURIComponent(query.trim())}`)
     }
   }
 
+  const title = searchQuery
+    ? `Results for “${searchQuery}”`
+    : FILTERS.find((f) => f.value === typeFilter)?.title || 'Trending'
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white">
       <Navbar />
 
-      <div className="pt-24 px-4 md:px-8 pb-16">
-        {/* Search bar */}
-        <div className="relative max-w-md mb-8">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleSearch}
-            placeholder="Search movies, shows..."
-            className="w-full bg-zinc-800 text-white placeholder-zinc-500 pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/30"
-          />
+      <div className="pt-28 px-4 md:px-12 pb-16">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-6">
+          <div>
+            <h1 className={ui.pageTitle}>{title}</h1>
+            {!searchQuery && <p className="text-zinc-500 text-sm mt-1">Browse the full catalog</p>}
+          </div>
+
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleSearch}
+              placeholder="Search movies, shows..."
+              className={`${ui.input} pl-11 rounded-full`}
+            />
+          </div>
         </div>
 
-        {/* Title */}
-        <h1 className="text-2xl font-bold mb-6">
-          {searchQuery ? `Results for "${searchQuery}"` :
-           typeFilter === 'movie' ? 'Popular Movies' :
-           typeFilter === 'tv' ? 'Popular TV Shows' :
-           typeFilter === 'top-movie' ? 'Top Rated Movies' :
-           typeFilter === 'top-tv' ? 'Top Rated TV Shows' : 'Trending'}
-        </h1>
+        {/* Kategórie */}
+        <div data-tv-row className="flex gap-2 overflow-x-auto scrollbar-hide p-1 mb-8">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => router.push(filter.value === 'all' ? '/browse' : `/browse?type=${filter.value}`)}
+              className={`flex-shrink-0 ${ui.pill(!searchQuery && typeFilter === filter.value)}`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Grid */}
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-zinc-400">Loading...</p>
-          </div>
+          <GridSkeleton />
         ) : items.length === 0 ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center justify-center h-64 gap-2 text-center">
+            <Search className="w-10 h-10 text-zinc-700" />
             <p className="text-zinc-400">No results found</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-x-5 gap-y-7">
               {items.map((item, index) => (
-                <MediaCard key={`${item.id}-${index}`} media={item} />
+                <MediaCard key={`${item.id}-${index}`} media={item} fluid />
               ))}
             </div>
 
-            {/* Load More */}
             {hasMore && (
-              <div className="flex justify-center mt-10">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-8 py-3 rounded-lg transition disabled:opacity-50"
-                >
-                  {loadingMore ? 'Loading...' : 'Load More'}
+              <div className="flex justify-center mt-12">
+                <button onClick={handleLoadMore} disabled={loadingMore} className={ui.btnSecondary}>
+                  {loadingMore ? 'Loading…' : 'Load more'}
                 </button>
               </div>
             )}
