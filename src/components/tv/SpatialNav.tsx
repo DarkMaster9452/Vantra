@@ -55,7 +55,7 @@ function isFocusable(el: HTMLElement) {
 
 // Ak je otvorený overlay s [data-tv-trap], navigujeme len v ňom (najvrchnejší vyhráva)
 function getScope(): ParentNode {
-  const traps = Array.from(document.querySelectorAll<HTMLElement>('[data-tv-trap]')).filter(isVisible)
+  const traps = Array.from(document.querySelectorAll<HTMLElement>('[data-tv-trap], dialog[open]')).filter(isVisible)
   return traps.length ? traps[traps.length - 1] : document
 }
 
@@ -200,7 +200,7 @@ function findInitialTarget(): HTMLElement | null {
   if (explicit) return explicit
   const all = getFocusables(scope)
   // Mimo navbaru, ak sa dá – do menu sa ide šípkou hore
-  return all.find((el) => !el.closest('nav')) || all[0] || null
+  return all.find((el) => !el.closest('nav, [data-app-header]')) || all[0] || null
 }
 
 export default function SpatialNav() {

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSessionUser } from '@/lib/session'
+import { NextRequest } from 'next/server'
+import { apiJson, authorizeMediaApi } from '@/lib/media-api'
+import { validateMediaParams } from '@/lib/api-policy'
 import { findPlexStream, plexConfigured } from '@/lib/plex'
 import { getMovieDetail, getTVDetail } from '@/lib/tmdb'
 
@@ -22,6 +23,8 @@ interface ProviderDef {
   getMovieUrl: (id: number) => string
   getTvUrl: (id: number, s: number, e: number) => string
   getAnimeUrl?: (malId: number, e: number) => string
+  // Provider s AniList id namiesto MAL id
+  getAnimeByAniListUrl?: (anilistId: number, e: number) => string
 }
 
 const PROVIDERS: ProviderDef[] = [
@@ -68,16 +71,22 @@ const PROVIDERS: ProviderDef[] = [
     getTvUrl: (id: number, s: number, e: number) =>
       `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}?autoplay=true`,
   },
+  {
+    // Záloha pre anime cez AniList id (Balušíkova verzia), má reklamy
+    name: 'VidNest',
+    getMovieUrl: (id: number) => `https://vidnest.fun/movie/${id}`,
+    getTvUrl: (id: number, s: number, e: number) => `https://vidnest.fun/tv/${id}/${s}/${e}`,
+    getAnimeByAniListUrl: (anilistId: number, e: number) => `https://vidnest.fun/anime/${anilistId}/${e}/sub`,
+  },
 ]
 
 export async function GET(request: NextRequest) {
-  const user = await getSessionUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   const { searchParams } = new URL(request.url)
+  try { validateMediaParams('stream', searchParams) }
+  catch (error) { return apiJson({ error: (error as Error).message }, 400) }
+  const denied = await authorizeMediaApi()
+  if (denied) return denied
+
   const tmdbId = searchParams.get('id')
   const type = searchParams.get('type')
   const season = searchParams.get('season')
@@ -86,27 +95,27 @@ export async function GET(request: NextRequest) {
   let title = searchParams.get('title') || ''
   let year = parseInt(searchParams.get('year') || '') || undefined
 
-  if (!tmdbId || !type) {
-    return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
-  }
+  if (!tmdbId || !type) return apiJson({ error: 'Missing parameters' }, 400)
+  const anilistId = parseInt(searchParams.get('anilistId') || '') || undefined
 
   const id = parseInt(tmdbId)
   const s = parseInt(season || '1')
   const e = parseInt(episode || '1')
 
-  // Anime vedia prehrať len provideri s podporou MAL id
-  const available = type === 'anime' ? PROVIDERS.filter((p) => p.getAnimeUrl) : PROVIDERS
-
-  const providers: { name: string; url: string; kind: 'embed' | 'file' }[] = available.map((provider) => ({
-    name: provider.name,
-    kind: 'embed',
-    url:
+  // Anime vedia prehrať len provideri s podporou MAL id (alebo AniList id, ak ho máme)
+  const providers: { name: string; url: string; kind: 'embed' | 'file' }[] = PROVIDERS.flatMap((provider) => {
+    const url =
       type === 'movie'
         ? provider.getMovieUrl(id)
-        : type === 'anime'
-        ? provider.getAnimeUrl!(id, e)
-        : provider.getTvUrl(id, s, e),
-  }))
+        : type === 'tv'
+        ? provider.getTvUrl(id, s, e)
+        : provider.getAnimeUrl
+        ? provider.getAnimeUrl(id, e)
+        : provider.getAnimeByAniListUrl && anilistId
+        ? provider.getAnimeByAniListUrl(anilistId, e)
+        : null
+    return url ? [{ name: provider.name, kind: 'embed' as const, url }] : []
+  })
 
   // Plex má prednosť: vlastná knižnica, natívny prehrávač, plné ovládanie
   if ((type === 'movie' || type === 'tv') && plexConfigured()) {
@@ -126,5 +135,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ providers, primary: providers[0] })
+  return apiJson({ providers, primary: providers[0] ?? null })
 }

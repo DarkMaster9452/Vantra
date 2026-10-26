@@ -1,0 +1,114 @@
+/* Vantra prehrávač – rovnaký jazyk ako zvyšok appky (sklo, červený akcent),
+   veľké ovládacie prvky čitateľné z gauča, plynulé prechody. */
+.root { position: absolute; inset: 0; z-index: 10; outline: none; font-family: var(--font-geist-sans), sans-serif; color: #f5f5f7; cursor: default; }
+.root[data-capture=false] { pointer-events: none; }
+.root[data-idle=true] { cursor: none; }
+.root :is(button, [role=slider]) { -webkit-tap-highlight-color: transparent; }
+
+/* Úvod */
+.intro { position: absolute; inset: 0; z-index: 5; background: #09090b; opacity: 0; visibility: hidden; transition: opacity .7s ease, visibility 0s linear .7s; pointer-events: none; }
+.intro[data-visible=true] { opacity: 1; visibility: visible; transition: opacity .3s ease; }
+.intro > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; animation: introZoom 12s ease-out both; }
+.introShade { position: absolute; inset: 0; background: linear-gradient(90deg, #09090bf0 0%, #09090b99 40%, transparent 80%), linear-gradient(0deg, #09090b 0%, transparent 50%); }
+.introCopy { position: absolute; left: 6%; bottom: 14%; max-width: min(620px, 80%); animation: introCopy .6s cubic-bezier(.2, .8, .2, 1) both; }
+.introCopy h1 { font-size: clamp(30px, 4.4vw, 58px); font-weight: 650; letter-spacing: -1.6px; line-height: 1.08; margin: 16px 0 10px; text-wrap: balance; }
+.introCopy > p:not(.kicker) { font-size: 15px; color: #c9c9d1; }
+.introSpinner { display: inline-flex; align-items: center; gap: 10px; margin-top: 26px; font-size: 13px; color: #c9c9d1; }
+.introSpinner > svg { color: #e50914; animation: spin 1s linear infinite; }
+.kicker { display: flex; align-items: center; gap: 9px; font-size: 10px; font-weight: 600; letter-spacing: 1.7px; color: #d6d6dc; }
+.kicker > span { width: 4px; height: 14px; border-radius: 1px; background: #e50914; }
+@keyframes introZoom { from { transform: scale(1.06); } to { transform: scale(1); } }
+@keyframes introCopy { from { opacity: 0; transform: translateY(16px); } }
+
+.reveal { position: absolute; top: 0; left: 0; right: 0; height: 80px; pointer-events: auto; }
+
+/* Stredový indikátor */
+.center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.flash { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: flash .7s ease forwards; }
+.flashIcon { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; background: #09090b99; backdrop-filter: blur(12px); border: 1px solid #ffffff22; }
+.flashText { font-size: 18px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: #09090bb3; font-variant-numeric: tabular-nums; }
+.hint { margin-top: 160px; padding: 10px 18px; border-radius: 30px; background: #09090bcc; color: #d6d6dc; font-size: 13px; }
+.buffering { color: #ffffffcc; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes flash { 0% { opacity: 0; transform: scale(.85); } 18% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(1.06); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Virtuálny kurzor */
+.pointer { position: absolute; z-index: 30; pointer-events: none; transform: translate(-3px, -2px); color: #fff; filter: drop-shadow(0 2px 4px #000e); }
+.pointer > svg { fill: #e50914; }
+.pointerHint { position: absolute; z-index: 30; top: 24px; left: 50%; transform: translateX(-50%); padding: 9px 16px; border-radius: 30px; background: #09090bd9; font-size: 13px; pointer-events: none; }
+
+/* Lišty */
+.top, .bottom { position: absolute; left: 0; right: 0; pointer-events: auto; transition: opacity .35s ease, transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s linear 0s; }
+.top { top: 0; display: flex; align-items: center; gap: 18px; padding: 26px 4% 70px; background: linear-gradient(180deg, #09090be6, #09090b70 55%, transparent); }
+.bottom { bottom: 0; padding: 90px 4% 30px; background: linear-gradient(0deg, #09090bf5, #09090b9e 50%, transparent); }
+.top[data-visible=false], .bottom[data-visible=false] { opacity: 0; visibility: hidden; transition: opacity .45s ease, transform .45s ease, visibility 0s linear .45s; }
+.top[data-visible=false] { transform: translateY(-14px); }
+.bottom[data-visible=false] { transform: translateY(18px); }
+.titleBlock { min-width: 0; }
+.titleBlock > p { font-size: 20px; font-weight: 650; letter-spacing: -.4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titleBlock > span { display: block; margin-top: 3px; font-size: 13px; color: #c3c3cb; }
+
+/* Časová os */
+.timeline { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.progress { position: relative; flex: 1; height: 30px; display: flex; align-items: center; cursor: pointer; outline: none; border-radius: 10px; }
+.track { position: relative; width: 100%; height: 5px; border-radius: 5px; background: #ffffff33; transition: height .2s; }
+.fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: #e50914; box-shadow: 0 0 12px #e5091466; }
+.knob { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: #e50914; transform: translate(-50%, -50%) scale(0); transition: transform .2s; box-shadow: 0 0 0 4px #e5091433; }
+.preview { position: absolute; bottom: 22px; transform: translateX(-50%); padding: 5px 10px; border-radius: 8px; background: #f5f5f7; color: #09090b; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; animation: pop .15s ease; }
+.progress:hover .track, .progress:focus-visible .track { height: 8px; }
+.progress:hover .knob { transform: translate(-50%, -50%) scale(1); }
+.progress:focus-visible .knob { transform: translate(-50%, -50%) scale(1.35); background: #fff; }
+.progress:focus-visible { outline: none; }
+.time { min-width: 140px; text-align: right; font-size: 15px; font-weight: 550; font-variant-numeric: tabular-nums; color: #e7e7ec; }
+.time > i { font-style: normal; color: #8b8b95; margin: 0 4px; }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, 4px); } }
+
+/* Tlačidlá */
+.controls { display: flex; align-items: center; gap: 12px; }
+.spacer { flex: 1; }
+.round, .pill, .back { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #ffffff26; background: #16161999; backdrop-filter: blur(14px); color: #f5f5f7; cursor: pointer; transition: background .2s, color .2s, border-color .2s, transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s; }
+.round { width: 52px; height: 52px; border-radius: 50%; }
+.main { width: 60px; height: 60px; background: #f5f5f7; color: #09090b; border-color: transparent; }
+.pill, .back { height: 48px; padding: 0 20px; border-radius: 30px; font-size: 14px; font-weight: 600; }
+.round:hover, .pill:hover, .back:hover { background: #2a2a2fdd; border-color: #ffffff55; }
+.main:hover { background: #fff; }
+.root :is(.round, .pill, .back):focus-visible { outline: none; background: #fff; color: #09090b; border-color: #fff; transform: scale(1.1); box-shadow: 0 10px 30px #000a, 0 0 0 4px #ffffff40; }
+.root .pill:focus-visible, .root .back:focus-visible { transform: scale(1.05); }
+.main:focus-visible { background: #e50914 !important; color: #fff !important; box-shadow: 0 10px 30px #e5091455, 0 0 0 4px #ffffff !important; }
+.pillLight { background: #f5f5f7; color: #09090b; border-color: transparent; }
+
+/* Panel zdrojov */
+.sourcesBackdrop { position: absolute; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: #09090b80; pointer-events: auto; animation: fade .2s ease; }
+.sources { width: min(380px, 100%); height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 36px 28px; background: #111114f5; border-left: 1px solid #ffffff1c; box-shadow: -30px 0 80px #0009; animation: panelIn .3s cubic-bezier(.2, .8, .2, 1); }
+.sources h3 { font-size: 26px; font-weight: 600; letter-spacing: -.6px; margin: 14px 0 4px; }
+.sources h3 > i { font-style: normal; color: #e50914; }
+.sourcesHint { font-size: 13px; color: #a2a2ab; margin-bottom: 14px; }
+.source { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; padding: 0 18px; border-radius: 12px; border: 1px solid transparent; background: #ffffff08; color: #d6d6dc; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer; transition: background .15s, transform .2s, color .15s; }
+.source em { margin-left: 8px; font-style: normal; font-size: 11px; color: #ffbd75; }
+.source[data-active=true] { color: #ff5362; background: #e5091418; border-color: #e5091440; }
+.source:hover { background: #ffffff12; }
+.source:focus-visible { outline: none; background: #fff; color: #09090b; transform: scale(1.03); }
+@keyframes panelIn { from { transform: translateX(40px); opacity: 0; } }
+@keyframes fade { from { opacity: 0; } }
+
+/* Ďalšia epizóda */
+.next { position: absolute; z-index: 20; right: 4%; bottom: 8%; width: min(360px, 90%); padding: 24px; border-radius: 18px; background: #111114f2; border: 1px solid #ffffff22; box-shadow: 0 30px 80px #000c; pointer-events: auto; animation: nextIn .4s cubic-bezier(.2, .8, .2, 1); }
+.nextTitle { font-size: 22px; font-weight: 650; letter-spacing: -.4px; margin: 12px 0 16px; }
+.nextBar { height: 4px; border-radius: 4px; background: #ffffff1f; overflow: hidden; margin-bottom: 18px; }
+.nextBar > i { display: block; height: 100%; background: #e50914; animation: countdown linear forwards; transform-origin: left; }
+.nextActions { display: flex; gap: 10px; }
+.nextActions > :first-child { flex: 1; }
+@keyframes nextIn { from { opacity: 0; transform: translateY(24px) scale(.97); } }
+@keyframes countdown { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (max-width: 640px) {
+  .round { width: 44px; height: 44px; }
+  .main { width: 50px; height: 50px; }
+  .pill, .back { height: 42px; padding: 0 14px; font-size: 12px; }
+  .back > span { display: none; }
+  .time { min-width: 0; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root *, .root *::before, .root *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

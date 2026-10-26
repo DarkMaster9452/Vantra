@@ -1,12 +1,15 @@
 package sk.vantra.tv;
 
 import android.app.Activity;
+import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.webkit.CookieManager;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
@@ -45,6 +48,28 @@ public class MainActivity extends Activity {
             "acscdn.com", "lijit.com", "33across.com", "inpagepush.com", "pushub.net", "vidoomy.com",
     };
 
+    /**
+     * WebView bez systémovej klávesnice. Vantra má v TV režime vlastnú klávesnicu
+     * na obrazovke, takže WebView nikdy nevytvorí spojenie so systémovou
+     * klávesnicou – Google TV preto nemôže ponúknuť ani "napíš cez telefón".
+     * Klávesy z ovládača a fyzickej klávesnice chodia ďalej ako bežné key eventy.
+     */
+    static class TvWebView extends WebView {
+        TvWebView(Context context) {
+            super(context);
+        }
+
+        @Override
+        public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+            return null;
+        }
+
+        @Override
+        public boolean onCheckIsTextEditor() {
+            return false;
+        }
+    }
+
     private WebView webView;
     private FrameLayout rootLayout;
     private View fullscreenVideoView;
@@ -62,7 +87,7 @@ public class MainActivity extends Activity {
         bridgeScript = readAsset("bridge.js");
 
         rootLayout = new FrameLayout(this);
-        webView = new WebView(this);
+        webView = new TvWebView(this);
         webView.setBackgroundColor(0xFF000000);
         rootLayout.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -78,7 +103,7 @@ public class MainActivity extends Activity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         // Web podľa tohto spozná TV režim (vlastná klávesnica, ovládanie prehrávača)
-        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.1");
+        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.2");
 
         // Session cookie musí prežiť reštart appky
         CookieManager cookieManager = CookieManager.getInstance();

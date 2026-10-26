@@ -1,0 +1,23 @@
+.form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.form label { display: grid; gap: 8px; font-size: 11px; color: var(--muted); }
+.form input, .edit input { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid #ffffff20; border-radius: 8px; background: var(--background); color: var(--text); font-size: 13px; outline: none; transition: border-color .2s, box-shadow .2s; }
+.form input:focus-visible, .edit input:focus-visible { border-color: #fff; box-shadow: 0 0 0 3px #ffffff30; outline: none; }
+.list { display: grid; gap: 12px; }
+.user { display: flex; align-items: center; gap: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); animation: enter .3s cubic-bezier(.2, .8, .2, 1); }
+.icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface-hover); color: var(--muted); flex-shrink: 0; }
+.identity { flex: 1; min-width: 0; }
+.identity strong { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 550; }
+.identity small { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge, .you { font-size: 9px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; padding: 3px 7px; border-radius: 20px; }
+.badge { color: #ff6d76; border: 1px solid #e5091455; background: #e5091418; }
+.you { color: var(--muted); border: 1px solid #ffffff20; }
+.actions, .edit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.edit input { width: 170px; min-height: 40px; }
+.action { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff20; border-radius: 8px; background: #ffffff05; color: #d0d0d8; font-size: 11px; cursor: pointer; transition: background .2s, border-color .2s, color .2s, transform .2s; }
+.action:hover:not(:disabled) { background: #ffffff10; border-color: #ffffff50; color: #fff; }
+.action:disabled { opacity: .4; cursor: default; }
+.action:focus-visible { outline: none; background: #fff; color: #09090b; border-color: #fff; transform: scale(1.04); }
+.danger { color: #ff8b92; border-color: #e5091440; }
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+@media (max-width: 760px) { .form { grid-template-columns: 1fr; } .user { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .user { animation: none; } }

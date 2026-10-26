@@ -1,38 +1,47 @@
 'use client'
 
+import { RemoveReviewedTitleDialog } from '@/components/vantra/PrivateReview'
 import { useWatchlist } from '@/hooks/useWatchlist'
-import { Check, Plus } from 'lucide-react'
+import { Bookmark, BookmarkCheck } from 'lucide-react'
 
 interface WatchlistButtonProps {
   tmdbId: number
   mediaType: string
   title: string
   posterPath: string
+  className?: string
 }
 
-// Kompaktné okrúhle tlačidlo vedľa Play (ako "+" na Disney+ / Netflixe),
-// popis sa ukáže pri focuse/hoveri
-export default function WatchlistButton({ tmdbId, mediaType, title, posterPath }: WatchlistButtonProps) {
-  const { isInWatchlist, loading, toggleWatchlist } = useWatchlist(tmdbId, mediaType)
-
-  const label = isInWatchlist ? 'In My List' : 'Add to My List'
+export default function WatchlistButton({ tmdbId, mediaType, title, posterPath, className }: WatchlistButtonProps) {
+  const { isInWatchlist, loading, pending, error, readFailed, retry, toggleWatchlist, reviewRemoval, cancelReviewRemoval } = useWatchlist(tmdbId, mediaType)
 
   return (
+    <div>
     <button
       onClick={() => toggleWatchlist(title, posterPath)}
-      disabled={loading}
-      aria-label={label}
-      title={label}
-      className={`group/wl relative flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center border-2 outline-none transition-[background-color,border-color,transform] duration-150 focus-visible:scale-110 focus-visible:bg-white focus-visible:text-black focus-visible:border-white disabled:opacity-40 ${
+      disabled={pending || loading || readFailed}
+      aria-pressed={isInWatchlist}
+      aria-busy={pending}
+      className={className || `inline-flex items-center gap-2 font-bold px-6 py-3 rounded-lg transition-all duration-200 border ${
         isInWatchlist
-          ? 'bg-white/15 text-white border-white/70 hover:border-white'
-          : 'bg-black/30 text-white border-white/40 hover:border-white'
+          ? 'bg-red-600/20 text-red-400 border-red-500/50 hover:bg-red-600/30'
+          : 'bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/40'
       }`}
     >
-      {isInWatchlist ? <Check className="w-5 h-5" /> : <Plus className="w-6 h-6" />}
-      <span className="pointer-events-none absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium text-white bg-black/80 px-2 py-1 rounded opacity-0 group-hover/wl:opacity-100 group-focus-visible/wl:opacity-100 transition-opacity">
-        {label}
-      </span>
+      {loading ? <>Checking watchlist…</> : isInWatchlist ? (
+        <>
+          <BookmarkCheck className="w-5 h-5" />
+          In Watchlist
+        </>
+      ) : (
+        <>
+          <Bookmark className="w-5 h-5" />
+          Add to Watchlist
+        </>
+      )}
     </button>
+    {reviewRemoval && <RemoveReviewedTitleDialog title={title} busy={pending} error={error} onCancel={cancelReviewRemoval} onConfirm={() => { void toggleWatchlist(title, posterPath, true) }} />}
+    {error && <p role="alert" className="text-red-400 text-sm mt-2">{error}{readFailed && <button type="button" className="ml-2 underline" onClick={retry}>Try again</button>}</p>}
+    </div>
   )
 }

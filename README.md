@@ -37,6 +37,14 @@ Access is restricted via an email whitelist in Supabase. Only pre-approved addre
 - Video player with multi-provider switching
 - Watchlist and watch history (per user, persistent)
 - Profile page with avatar upload and display name
+
+### This fork (TV-first)
+
+- Neon Postgres + custom JWT sessions, PIN profiles ("Who's watching?"), admin page, Plex
+- Library tracking: watch status, private rating and note, collections with custom order, watched episodes, new-episode badges
+- Continue watching, For you, personal stats, film collections, person pages, catalog filters
+- TV mode (Android TV app or `?tv=1`): D-pad navigation everywhere, OK = select, Back = one step back, built-in on-screen keyboard (the system / "type on phone" keyboard never opens), player that starts on its own and is controlled straight from the remote
+- Database changes live in `db/migrations/` (apply them in order)
 ![image alt](https://github.com/balusikf/Vantra/blob/main/Screenshot%202026-05-06%20172305.png?raw=true)
 ---
 

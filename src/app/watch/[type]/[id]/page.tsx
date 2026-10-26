@@ -38,6 +38,7 @@ export default function WatchPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
+  const [backdrop, setBackdrop] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [totalEpisodes, setTotalEpisodes] = useState<number | null>(null)
   // Bridge z Android TV appky (na serveri vždy false, na klientovi podľa okna)
@@ -73,6 +74,7 @@ export default function WatchPage() {
                 const data = await res.json()
                 name = data.title?.english || data.title?.romaji || ''
                 posterPath = data.coverImage?.large || ''
+                setBackdrop(data.artwork?.backdrop ? `https://image.tmdb.org/t/p/w1280${data.artwork.backdrop}` : data.bannerImage || null)
                 setTotalEpisodes(data.episodes || null)
                 historyId = parseInt(anilistId)
               }
@@ -84,6 +86,7 @@ export default function WatchPage() {
               name = data.title || data.name || ''
               year = (data.release_date || data.first_air_date || '').slice(0, 4)
               posterPath = data.poster_path || ''
+              setBackdrop(data.backdrop_path ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}` : null)
               if (type === 'tv') setSeasons((data.seasons || []).filter((s: Season) => s.season_number > 0))
             }
           }
@@ -92,10 +95,11 @@ export default function WatchPage() {
         }
         setTitle(name)
 
-        const url =
-          `/api/stream?id=${id}&type=${type}&season=${season}&episode=${episode}` +
-          `&title=${encodeURIComponent(type === 'anime' ? '' : name)}&year=${year}`
-        const res = await fetch(url)
+        const query = new URLSearchParams({ id, type, season: String(season), episode: String(episode) })
+        if (type === 'anime' && anilistId) query.set('anilistId', anilistId)
+        if (type !== 'anime' && name) query.set('title', name.slice(0, 200))
+        if (year) query.set('year', year)
+        const res = await fetch(`/api/stream?${query}`)
         const data = await res.json()
         setProviders(data.providers || [])
         setActiveProvider(data.primary || null)
@@ -152,7 +156,7 @@ export default function WatchPage() {
   const nextLabel = next ? (type === 'tv' ? `S${next.season}:E${next.episode}` : `Episode ${next.episode}`) : undefined
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
+    <main data-player className="fixed inset-0 bg-black overflow-hidden" aria-label="Video playback">
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -197,8 +201,9 @@ export default function WatchPage() {
           onExit={exit}
           iframeRef={iframeRef}
           remoteKeyRef={remoteKeyRef}
+          backdrop={backdrop}
         />
       )}
-    </div>
+    </main>
   )
 }
