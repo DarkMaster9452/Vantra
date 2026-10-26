@@ -1,50 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSessionUser } from '@/lib/session'
-import { getAnimeDetail, getAnimeEpisodes, getTrendingAnime, getPopularAnime, getTopRatedAnime, searchAnime } from '@/lib/anilist'
+import { NextRequest } from 'next/server'
+import { apiJson, authorizeMediaApi, catalogError } from '@/lib/media-api'
+import { validateMediaParams } from '@/lib/api-policy'
+import { getAnimeArtwork, getAnimeEpisodePreviews } from '@/lib/anime-artwork'
+import { parseInteger } from '@/lib/watch-metadata'
+import { readCatalogFilters } from '@/lib/catalog-filters'
+import { getAnimeCatalog, getAnimeDetail, getAnimeEpisodes, getTrendingAnime, getPopularAnime, getTopRatedAnime, searchAnime } from '@/lib/anilist'
 
 export async function GET(request: NextRequest) {
-  const user = await getSessionUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   const { searchParams } = new URL(request.url)
+  try { validateMediaParams('anilist', searchParams) }
+  catch (error) { return apiJson({ error: (error as Error).message }, 400) }
+  const denied = await authorizeMediaApi()
+  if (denied) return denied
   const type = searchParams.get('type')
   const id = searchParams.get('id')
   const query = searchParams.get('query')
+  const page = parseInteger(searchParams.get('page') ?? '1')
+  const sort = searchParams.get('sort') ?? 'trending'
+  if (page === null || page > 500 || !['trending', 'popular', 'top-rated'].includes(sort)) {
+    return apiJson({ error: 'Invalid page or sort' }, 400)
+  }
+  if (id !== null && parseInteger(id) === null) return apiJson({ error: 'Invalid id' }, 400)
 
   try {
-    let data
-
     switch (type) {
-      case 'trending':
-        data = await getTrendingAnime()
-        break
-      case 'popular':
-        data = await getPopularAnime()
-        break
-      case 'top-rated':
-        data = await getTopRatedAnime()
-        break
-      case 'detail':
-        if (!id) return NextResponse.json({ error: 'No id' }, { status: 400 })
-        data = await getAnimeDetail(parseInt(id))
-        break
-      case 'episodes':
-        if (!id) return NextResponse.json({ error: 'No id' }, { status: 400 })
-        data = await getAnimeEpisodes(parseInt(id))
-        break
+      case 'catalog':
+        return apiJson(await getAnimeCatalog(page, sort as 'trending' | 'popular' | 'top-rated', query || undefined, readCatalogFilters(searchParams), searchParams.get('released') === '1'))
+      case 'trending': return apiJson(await getTrendingAnime())
+      case 'popular': return apiJson(await getPopularAnime())
+      case 'top-rated': return apiJson(await getTopRatedAnime())
+      case 'detail': {
+        const [anime, artwork] = await Promise.all([getAnimeDetail(Number(id)), getAnimeArtwork(Number(id))])
+        return apiJson(anime ? { ...anime, artwork } : null)
+      }
+      case 'episodes': {
+        const [episodes, anime] = await Promise.all([getAnimeEpisodes(Number(id)), getAnimeDetail(Number(id))])
+        return apiJson({ ...episodes, previews: anime ? await getAnimeEpisodePreviews(anime) : [] })
+      }
       case 'search':
-        if (!query) return NextResponse.json({ error: 'No query' }, { status: 400 })
-        data = await searchAnime(query)
-        break
+        if (!query) return apiJson({ error: 'No query' }, 400)
+        return apiJson(await searchAnime(query))
       default:
-        return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+        return apiJson({ error: 'Invalid type' }, 400)
     }
-
-    return NextResponse.json(data)
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+    return catalogError(error)
   }
 }

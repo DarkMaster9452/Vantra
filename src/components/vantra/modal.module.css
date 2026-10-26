@@ -1,0 +1,3 @@
+.backdrop { position: fixed; inset: 0; z-index: 250; display: grid; place-items: center; padding: 20px; background: #09090bd9; backdrop-filter: blur(8px); font-family: var(--font-geist-sans), sans-serif; color: #f4f4f6; }
+.panel { width: min(92vw, 520px); max-height: 88svh; overflow: auto; overscroll-behavior: contain; padding: 26px; background: #111114; border: 1px solid #ffffff25; border-radius: 14px; box-shadow: 0 25px 100px #0009; }
+.panel :is(button, a, input, textarea, [tabindex]):focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

@@ -1,0 +1,109 @@
+.page { position: relative; min-height: 100svh; overflow: clip; background: #09090b; color: #f5f5f7; font-family: var(--font-geist-sans),sans-serif; }
+.page :is(button,input):focus-visible { outline: 2px solid #ff2635; outline-offset: 4px; }
+.page button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ambient { position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 48%,#e509140d,transparent 53%),radial-gradient(ellipse at 95% 0%,#ffffff03,transparent 45%); pointer-events: none; }
+.header { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 38px 5%; }
+.brand { display: inline-flex; }
+.brand > svg { width: 157px; height: auto; }
+.memberLabel { display: inline-flex; align-items: center; gap: 9px; color: #85858f; text-transform: uppercase; font-size: 9px; letter-spacing: 1.6px; }
+.memberLabel > svg { color: #a2a2ab; }
+.main { position: relative; display: grid; grid-template-columns: 1.15fr 1fr; min-height: max(610px,calc(100svh - 196px)); max-width: 1660px; margin: 0 auto; padding: 0 5%; }
+.hero { position: relative; display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 55px 8% 100px 0; }
+.artwork { position: absolute; inset: -70px -9% -30px 5%; pointer-events: none; mask-image: linear-gradient(0deg,transparent,#000 20%,#000 80%,transparent); }
+.artwork > svg { height: 100%; width: 100%; transform: rotate(-7deg); animation: beamEnter 1.4s ease-out both; }
+.heroCopy { position: relative; }
+.eyebrow { display: flex; align-items: center; gap: 9px; font-size: 9px; font-weight: 550; letter-spacing: 1.5px; text-transform: uppercase; color: #a2a2ab; }
+.eyebrow > span { display: inline-block; width: 4px; height: 13px; border-radius: 1px; background: #e50914; }
+.headline { font-size: clamp(55px,5.3vw,86px); font-weight: 550; letter-spacing: -4px; line-height: 1.09; margin: 31px 0 27px; }
+.headline > span,.formInner h1 > span { color: #e50914; }
+.description { font-size: 13px; line-height: 1.95; color: #a2a2ab; }
+.categories { display: flex; align-items: center; gap: 19px; margin-top: 35px; color: #d6d6dc; font-size: 10px; letter-spacing: .5px; }
+.categories > i { width: 3px; height: 3px; border-radius: 50%; background: #e50914; }
+.heroFoot { position: absolute; left: 0; bottom: 28px; display: flex; align-items: center; gap: 13px; color: #73737e; font-size: 10px; }
+.line { height: 1px; width: 31px; background: #ffffff28; }
+.formSide { position: relative; display: flex; align-items: center; justify-content: flex-end; padding: 50px 0 65px 14%; border-left: 1px solid #ffffff0b; }
+.formInner { width: 100%; max-width: 385px; animation: formEnter .5s cubic-bezier(.2,.8,.2,1) both; }
+.formInner h1 { margin: 23px 0 13px; font-size: clamp(32px,3vw,43px); font-weight: 550; line-height: 1.15; letter-spacing: -1.7px; }
+.formIntro { font-size: 12px; color: #a2a2ab; line-height: 1.8; margin-bottom: 36px; }
+.fieldGroup { margin-bottom: 21px; }
+.fieldGroup > label { display: inline-block; margin-bottom: 10px; color: #d6d6dc; font-size: 11px; }
+.inputWrap { display: flex; align-items: center; gap: 12px; border: 1px solid #ffffff19; border-radius: 9px; background: #161619a6; padding: 0 16px; min-height: 55px; transition: border-color .2s,box-shadow .2s,background .2s; }
+.inputWrap > svg { flex-shrink: 0; color: #696974; transition: color .2s; }
+.inputWrap:focus-within { border-color: #ffffff4c; box-shadow: 0 0 0 4px #ffffff03; background: #161619; }
+.inputWrap:focus-within > svg { color: #d6d6dc; }
+.inputWrap input { width: 100%; min-width: 0; height: 53px; outline: none !important; background: transparent; color: #f5f5f7; font-size: 12px; }
+.inputWrap input::placeholder { color: #696974; }
+.inputWrap input:autofill { box-shadow: inset 0 0 0 100px #161619; -webkit-text-fill-color: #f5f5f7; caret-color: #f5f5f7; }
+.passwordToggle { display: grid; place-items: center; flex-shrink: 0; height: 36px; width: 30px; color: #85858f; border-radius: 5px; transition: color .2s; }
+.passwordToggle:hover { color: #f5f5f7; }
+.submit { display: flex; align-items: center; justify-content: center; gap: 11px; width: 100%; min-height: 53px; padding: 14px 20px; border-radius: 8px; margin-top: 31px; background: #e50914; color: #fff; font-size: 12px; font-weight: 600; box-shadow: 0 8px 24px #e509140e; transition: background .2s,transform .2s,box-shadow .2s; }
+.submit > svg:last-child { transition: transform .2s; }
+.submit:hover:not(:disabled) { background: #ff1624; box-shadow: 0 8px 24px #e5091424; transform: translateY(-1px); }
+.submit:hover:not(:disabled) > svg:last-child { transform: translateX(3px); }
+.submit:disabled { cursor: wait; opacity: .65; }
+.invitation { display: flex; align-items: center; gap: 12px; padding-top: 25px; margin-top: 30px; border-top: 1px solid #ffffff0e; color: #85858f; }
+.invitation > svg { flex-shrink: 0; color: #696974; }
+.invitation p { font-size: 10px; line-height: 1.9; }
+.invitation p > span { color: #696974; }
+.error { color: #ff9ba3; background: #e509140d; border: 1px solid #e5091433; padding: 12px 14px; border-radius: 7px; font-size: 11px; line-height: 1.7; margin-top: 6px; animation: formEnter .2s ease-out; }
+.spinner { animation: spin 1s linear infinite; }
+.footer { position: relative; display: flex; justify-content: space-between; gap: 20px; margin: 0 5%; padding: 25px 0; border-top: 1px solid #ffffff0b; color: #5e5e69; font-size: 9px; letter-spacing: .3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes formEnter { from { opacity: 0; transform: translateY(10px); } }
+@keyframes beamEnter { from { opacity: 0; transform: translateY(15px) rotate(-7deg); } }
+@media (min-width:1600px) { .main { min-height: max(650px,calc(100svh - 210px)); } .header { padding-top: 45px; padding-bottom: 45px; } }
+@media (max-width:1050px) { .main { grid-template-columns: 1fr 1fr; } .formSide { padding-left: 12%; } .headline { font-size: 57px; letter-spacing: -2.6px; } .hero .eyebrow { font-size: 8px; letter-spacing: 1px; } }
+@media (max-width:760px) { .header { padding: 28px 6%; } .brand > svg { width: 137px; } .memberLabel { font-size: 8px; letter-spacing: 1px; } .main { display: flex; align-items: center; justify-content: center; padding: 24px 7% 50px; min-height: calc(100svh - 160px); } .hero { display: none; } .formSide { width: 100%; border: 0; padding: 0; justify-content: center; } .formInner { max-width: 390px; } .formInner h1 { font-size: 38px; } .ambient { background: radial-gradient(ellipse at 0% 20%,#e5091410,transparent 65%); } .footer { margin: 0 6%; padding: 22px 0; font-size: 8px; } }
+@media (max-width:380px) { .memberLabel { letter-spacing: .5px; font-size: 7px; } .brand > svg { width: 120px; } .formInner h1 { font-size: 34px; } }
+@media (prefers-reduced-motion:reduce) { .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; } }
+
+/* Výber profilu a PIN (Netflix štýl, ovládateľné ovládačom) */
+.profiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 22px 16px; margin: 6px 0 30px; }
+.profile { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 6px; border-radius: 14px; color: #a2a2ab; font-size: 12px; font-weight: 550; transition: color .2s, transform .25s cubic-bezier(.2,.8,.2,1); }
+.profile > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile:hover, .profile:focus-visible { color: #f5f5f7; transform: translateY(-4px) scale(1.04); }
+.page .profile:focus-visible { outline: none; }
+.profile:focus-visible .profileAvatar, .profile:hover .profileAvatar { border-color: #fff; box-shadow: 0 0 0 3px #fff, 0 14px 34px #000a; }
+.profileAvatar { position: relative; display: grid; place-items: center; width: 92px; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: linear-gradient(140deg, #2a2a2f, #18181b); border: 2px solid #ffffff1c; color: #f5f5f7; font-size: 34px; font-weight: 600; transition: border-color .2s, box-shadow .25s; }
+.profileAvatar > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.profileAvatarLarge { width: 74px; font-size: 28px; flex-shrink: 0; }
+.profileSkeleton { display: block; width: 92px; aspect-ratio: 1; border-radius: 14px; background: #ffffff08; animation: breathe 1.3s ease-in-out infinite alternate; justify-self: center; }
+.switchMode { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 14px; margin-bottom: 18px; border: 1px solid #ffffff17; border-radius: 9px; color: #c4c4cc; font-size: 11px; transition: border-color .2s, color .2s, background .2s; }
+.switchMode:hover { border-color: #ffffff45; color: #fff; }
+.page .switchMode:focus-visible { outline: none; background: #fff; color: #09090b; border-color: #fff; }
+.pinIdentity { display: flex; align-items: center; gap: 20px; margin: 8px 0 26px; }
+.pinIdentity h1 { margin: 10px 0 0; }
+.pinDots { display: flex; gap: 14px; margin-bottom: 14px; }
+.pinDots > i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ffffff40; transition: background .15s, border-color .15s, transform .2s; }
+.pinDots > i[data-filled=true] { background: #e50914; border-color: #e50914; transform: scale(1.1); }
+.pinHint { font-size: 12px; color: #a2a2ab; min-height: 20px; margin-bottom: 18px; }
+.pinPad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+.pinPad > button { height: 60px; border-radius: 12px; border: 1px solid #ffffff17; background: #161619; color: #f5f5f7; font-size: 22px; font-weight: 600; display: grid; place-items: center; transition: background .15s, transform .15s, border-color .15s, color .15s; }
+.pinPad > button:hover:not(:disabled) { background: #232326; border-color: #ffffff40; }
+.page .pinPad > button:focus-visible { outline: none; background: #fff; color: #09090b; border-color: #fff; transform: scale(1.08); }
+.pinPad > button:disabled { opacity: .45; cursor: default; }
+.pinMuted { color: #a2a2ab !important; background: #0f0f12 !important; }
+.page .pinMuted:focus-visible { background: #fff !important; color: #09090b !important; }
+.formSide .error { margin-bottom: 14px; }
+@keyframes breathe { to { opacity: .4; } }
+
+/* TV: výber profilu cez celú obrazovku, bez úvodného textu */
+:global(html[data-tv]) .hero, :global(html[data-tv]) .footer { display: none; }
+:global(html[data-tv]) .main { grid-template-columns: 1fr; min-height: calc(100svh - 120px); }
+:global(html[data-tv]) .formSide { justify-content: center; border-left: 0; padding: 10px 0 40px; }
+:global(html[data-tv]) .formInner { max-width: 560px; text-align: center; }
+:global(html[data-tv]) .formInner .eyebrow, :global(html[data-tv]) .pinDots { justify-content: center; }
+:global(html[data-tv]) .profiles { grid-template-columns: repeat(auto-fit, minmax(110px, 130px)); justify-content: center; }
+:global(html[data-tv]) .profileAvatar { width: 110px; }
+:global(html[data-tv]) .pinIdentity { justify-content: center; text-align: left; }
+:global(html[data-tv]) .pinPad { justify-content: center; grid-template-columns: repeat(3, 84px); }
+:global(html[data-tv]) .header { padding: 26px 5%; }
+@media (prefers-reduced-motion: reduce) { .profile, .profileAvatar, .pinPad > button, .pinDots > i { transition: none; } .profileSkeleton { animation: none; } }
+/* TV: PIN vedľa profilu, nech sa všetko zmestí na obrazovku bez scrollovania */
+:global(html[data-tv]) .pinStep { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto 1fr; column-gap: 56px; max-width: 760px; text-align: left; align-items: start; }
+:global(html[data-tv]) .pinStep > .switchMode { grid-column: 1; grid-row: 1; justify-self: start; }
+:global(html[data-tv]) .pinStep > .pinIdentity { grid-column: 1; grid-row: 2; justify-content: flex-start; margin: 4px 0 22px; }
+:global(html[data-tv]) .pinStep > .pinDots { grid-column: 1; grid-row: 3; justify-content: flex-start; }
+:global(html[data-tv]) .pinStep > p { grid-column: 1; grid-row: 4; }
+:global(html[data-tv]) .pinStep > .pinPad { grid-column: 2; grid-row: 1 / span 4; grid-template-columns: repeat(3, 76px); }
+:global(html[data-tv]) .pinStep .pinPad > button { height: 58px; }

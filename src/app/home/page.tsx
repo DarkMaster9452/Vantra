@@ -1,63 +1,40 @@
-import { getSessionUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
-import {
-  getTrending,
-  getPopularMovies,
-  getPopularTV,
-  getTopRatedMovies,
-  getTopRatedTV,
-  getMovieDetail,
-  getTVDetail,
-  TMDBMedia,
-} from '@/lib/tmdb'
-import Hero from '@/components/media/Hero'
-import Carousel from '@/components/media/Carousel'
-import Navbar from '@/components/layout/Navbar'
+import { getSessionUser } from '@/lib/session'
+import { getMediaImages, getPopularMovies, getPopularTV, getTopRatedMovies, getTopRatedTV, getTrending, type SpotlightMedia, type TMDBMedia, type TMDBTitleLogo } from '@/lib/tmdb'
+import HomeView from '@/components/vantra/HomeView'
+
+export const metadata = { title: 'Home' }
 
 export default async function HomePage() {
   const user = await getSessionUser()
-
   if (!user) redirect('/login')
 
-  // Načítame dáta paralelne pre rýchlosť
-  const [trending, popularMovies, popularTV, topRatedMovies, topRatedTV] = await Promise.all([
-    getTrending(),
-    getPopularMovies(),
-    getPopularTV(),
-    getTopRatedMovies(),
-    getTopRatedTV(),
-  ])
+  // Výpadok jedného zoznamu nesmie zhodiť celú domovskú stránku
+  const results = await Promise.allSettled([getTrending(), getPopularMovies(), getPopularTV(), getTopRatedMovies(), getTopRatedTV()])
+  const catalog = results.map(result => result.status === 'fulfilled'
+    ? (result.value.results as TMDBMedia[]).filter(item => item.media_type !== 'person')
+    : [])
 
-  // Hero = prvý trending titul; trending endpoint nevracia logá,
-  // tak si oficiálnu logo grafiku dotiahneme z detailu titulu
-  let heroMedia: TMDBMedia = trending.results[0]
-  try {
-    const detail =
-      heroMedia.media_type === 'tv'
-        ? await getTVDetail(heroMedia.id)
-        : await getMovieDetail(heroMedia.id)
-    heroMedia = { ...heroMedia, images: detail.images }
-  } catch {
-    // bez loga sa zobrazí textový názov
-  }
+  // Spotlight: 5 trending titulov s originálnym logom titulu (TMDB)
+  const spotlight: SpotlightMedia[] = await Promise.all(catalog[0].filter(item => item.backdrop_path).slice(0, 5).map(async item => {
+    try {
+      const images: { logos: TMDBTitleLogo[] } = await getMediaImages(item.id, item.media_type === 'tv' ? 'tv' : 'movie')
+      const logos = images.logos.filter(logo => logo.width > 0 && logo.height > 0)
+      const title_logo = [...logos].sort((a, b) =>
+        Number(b.iso_639_1 === 'en') - Number(a.iso_639_1 === 'en') || b.vote_average - a.vote_average
+      )[0]
+      return { ...item, title_logo }
+    } catch {
+      return item
+    }
+  }))
 
-  return (
-    <div className="min-h-screen bg-black">
-      <Navbar />
-
-      {/* Hero banner */}
-      <Hero media={heroMedia} />
-
-      {/* Carousely – každá kategória má View All na kompletný zoznam.
-          Bez negatívneho marginu: nadpisy majú vlastný priestor a neprelínajú
-          sa s hero bannerom */}
-      <div className="relative z-10 pt-4 pb-16">
-        <Carousel title="Trending This Week" items={trending.results} href="/browse" />
-        <Carousel title="Popular Movies" items={popularMovies.results} href="/browse?type=movie" />
-        <Carousel title="Popular TV Shows" items={popularTV.results} href="/browse?type=tv" />
-        <Carousel title="Top Rated Movies" items={topRatedMovies.results} href="/browse?type=top-movie" />
-        <Carousel title="Top Rated TV Shows" items={topRatedTV.results} href="/browse?type=top-tv" />
-      </div>
-    </div>
-  )
+  return <HomeView
+    spotlight={spotlight}
+    trending={catalog[0]}
+    movies={catalog[1].map(item => ({ ...item, media_type: 'movie' }))}
+    shows={catalog[2].map(item => ({ ...item, media_type: 'tv' }))}
+    topMovies={catalog[3].map(item => ({ ...item, media_type: 'movie' }))}
+    topShows={catalog[4].map(item => ({ ...item, media_type: 'tv' }))}
+  />
 }

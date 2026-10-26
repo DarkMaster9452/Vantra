@@ -78,8 +78,14 @@ export default function TVInputKeyboard() {
       if (submit) {
         // Enter na poli – napr. login sa odošle rovno z klávesnice
         submitting.current = true
-        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))
+        const handled = !el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))
         submitting.current = false
+        // Pole vo formulári (vyhľadávanie, prihlásenie...) sa rovno odošle;
+        // ak ešte niečo chýba, focus prejde na prvé nevyplnené pole
+        if (!handled && el.form) {
+          if (el.form.checkValidity()) el.form.requestSubmit()
+          else el.form.querySelector<HTMLElement>(':invalid:not(fieldset)')?.focus({ preventScroll: true })
+        }
       }
     },
     [target]

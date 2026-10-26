@@ -26,7 +26,20 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 5. VANTRA sa objaví medzi aplikáciami.
 
 > Funguje na Android TV, Google TV a Fire TV. Samsung (Tizen) a LG (webOS)
-> televízory APK nepodporujú – tam otvor Vantru v prehliadači.
+> televízory APK nepodporujú – tam otvor Vantru v prehliadači TV s `?tv=1` na konci
+> adresy (zapne TV režim), alebo pripoj Google TV Streamer / Chromecast s Google TV /
+> Fire TV Stick a nainštaluj APK naň.
+
+## Novinky vo verzii 1.2 (versionCode 3)
+
+- WebView nikdy neotvorí systémovú klávesnicu (ani „napíš cez telefón“ na Google TV) –
+  všetko sa píše vlastnou klávesnicou Vantry.
+- Nové logo v launcheri a na banneri.
+- User-Agent `VantraTV/1.2` – web podľa neho zapne TV režim.
+
+Po zmene treba APK znova zbuildiť (Actions → Build Android TV APK) a nainštalovať.
+Každý build z Actions je podpísaný iným debug kľúčom, preto starú VANTRU najprv
+odinštaluj (inak TV hlási „Aplikácia nebola nainštalovaná“) a potom sa znova prihlás.
 
 ## Ovládanie
 

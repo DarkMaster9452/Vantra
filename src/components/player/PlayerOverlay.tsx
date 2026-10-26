@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { registerBackHandler } from '@/components/tv/backHandler'
 import type { PlaybackControls, PlaybackState } from './playback'
+import p from './player.module.css'
 
 // Vantra overlay nad prehrávačom – celé ovládanie ovládačom (Netflix / Disney+ štýl).
 //
@@ -58,6 +59,8 @@ interface PlayerOverlayProps {
   iframeRef?: React.RefObject<HTMLIFrameElement | null>
   /** Registrácia handlera pre klávesy preposlané z iframu */
   remoteKeyRef?: React.MutableRefObject<((key: string, repeat: boolean) => void) | null>
+  /** Pozadie titulu na úvodnú obrazovku, kým sa video rozbehne */
+  backdrop?: string | null
 }
 
 const HIDE_DELAY = 4000
@@ -74,16 +77,6 @@ function formatTime(seconds: number) {
     : `${m}:${String(s).padStart(2, '0')}`
 }
 
-const roundButton =
-  'flex items-center justify-center w-14 h-14 rounded-full text-white bg-white/10 outline-none ' +
-  'transition-[background-color,transform] duration-150 hover:bg-white/25 ' +
-  'focus-visible:bg-white focus-visible:text-black focus-visible:scale-110'
-
-const pillButton =
-  'flex items-center gap-2 h-12 px-5 rounded-full text-white bg-white/10 text-sm font-semibold outline-none ' +
-  'transition-[background-color,transform] duration-150 hover:bg-white/25 ' +
-  'focus-visible:bg-white focus-visible:text-black focus-visible:scale-105'
-
 export default function PlayerOverlay({
   mode,
   state,
@@ -99,6 +92,7 @@ export default function PlayerOverlay({
   onExit,
   iframeRef,
   remoteKeyRef,
+  backdrop,
 }: PlayerOverlayProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const playRef = useRef<HTMLButtonElement>(null)
@@ -119,6 +113,13 @@ export default function PlayerOverlay({
   const [nextCancelled, setNextCancelled] = useState(false)
 
   const canControl = mode !== 'fallback'
+  // Úvodná obrazovka s pozadím titulu, kým sa video nerozbehne (max. pár sekúnd)
+  const [introDone, setIntroDone] = useState(false)
+  const intro = !introDone && !(canControl && state.ready)
+  useEffect(() => {
+    const timer = setTimeout(() => setIntroDone(true), mode === 'fallback' ? 2500 : 9000)
+    return () => clearTimeout(timer)
+  }, [mode])
   const showNextCard = !!onNext && state.ended && !nextCancelled
   const stateRef = useRef(state)
   useEffect(() => {
@@ -359,7 +360,7 @@ export default function PlayerOverlay({
   // Embed sa ešte nerozbehol → po chvíli automaticky "klikni" na jeho play
   useEffect(() => {
     if (mode !== 'bridge' || state.ready) return
-    const timers = [5000, 10000, 16000].map((ms) => setTimeout(startPlayer, ms))
+    const timers = [2500, 6000, 11000, 17000].map((ms) => setTimeout(startPlayer, ms))
     return () => timers.forEach(clearTimeout)
   }, [mode, state.ready, startPlayer])
 
@@ -408,31 +409,46 @@ export default function PlayerOverlay({
           show()
         }
       }}
-      className={`absolute inset-0 z-10 outline-none ${capturePointer ? '' : 'pointer-events-none'} ${
-        visible || pointer ? 'cursor-default' : 'cursor-none'
-      }`}
+      data-capture={capturePointer}
+      data-idle={!visible && !pointer}
+      className={p.root}
     >
+      {/* Úvod: pozadie titulu, kým sa prehrávač rozbehne (plynulý prechod do videa) */}
+      <div className={p.intro} data-visible={intro}>
+        {backdrop && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={backdrop} alt="" />
+        )}
+        <div className={p.introShade} />
+        <div className={p.introCopy}>
+          <p className={p.kicker}><span /> NOW PLAYING</p>
+          <h1>{title}</h1>
+          {subtitle && <p>{subtitle}</p>}
+          <span className={p.introSpinner}><Loader2 size={22} /> Starting your story…</span>
+        </div>
+      </div>
+
       {/* Desktop bez bridge: prechod myšou po vrchu ukáže ovládanie */}
-      {!capturePointer && <div className="absolute top-0 inset-x-0 h-20 pointer-events-auto" onMouseEnter={() => show()} />}
+      {!capturePointer && <div className={p.reveal} onMouseEnter={() => show()} />}
 
       {/* Stredový indikátor (play/pauza/posun/načítanie) */}
-      {(flash || (canControl && state.buffering) || (mode === 'bridge' && !state.ready)) && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {!intro && (flash || (canControl && state.buffering) || (mode === 'bridge' && !state.ready)) && (
+        <div className={p.center}>
           {flash ? (
-            <div className="flex flex-col items-center gap-2" style={{ animation: 'fadeIn 0.15s ease forwards' }}>
-              <div className="w-24 h-24 rounded-full bg-black/60 flex items-center justify-center text-white">
-                {flash.icon === 'play' && <Play className="w-12 h-12 fill-white ml-1" />}
-                {flash.icon === 'pause' && <Pause className="w-12 h-12 fill-white" />}
-                {flash.icon === 'back' && <RotateCcw className="w-12 h-12" />}
-                {flash.icon === 'fwd' && <RotateCw className="w-12 h-12" />}
-                {flash.icon === 'start' && <Loader2 className="w-12 h-12 animate-spin" />}
+            <div key={`${flash.icon}:${flash.text}`} className={p.flash}>
+              <div className={p.flashIcon}>
+                {flash.icon === 'play' && <Play size={44} fill="currentColor" style={{ marginLeft: 4 }} />}
+                {flash.icon === 'pause' && <Pause size={44} fill="currentColor" />}
+                {flash.icon === 'back' && <RotateCcw size={42} />}
+                {flash.icon === 'fwd' && <RotateCw size={42} />}
+                {flash.icon === 'start' && <Loader2 size={42} className={p.spin} />}
               </div>
-              {flash.text && <span className="text-white text-lg font-semibold bg-black/60 px-3 py-1 rounded-full tabular-nums">{flash.text}</span>}
+              {flash.text && <span className={p.flashText}>{flash.text}</span>}
             </div>
           ) : mode === 'bridge' && !state.ready ? (
-            <div className="text-zinc-300 text-sm bg-black/70 px-4 py-2 rounded-full mt-40">Loading player… press OK if it doesn&apos;t start</div>
+            <div className={p.hint}>Loading player… press OK if it doesn&apos;t start</div>
           ) : (
-            <Loader2 className="w-14 h-14 text-white/80 animate-spin" />
+            <Loader2 size={52} className={`${p.spin} ${p.buffering}`} />
           )}
         </div>
       )}
@@ -440,38 +456,28 @@ export default function PlayerOverlay({
       {/* Virtuálny kurzor */}
       {pointer && (
         <>
-          <div className="absolute pointer-events-none z-30 -translate-x-[3px] -translate-y-[2px]" style={{ left: pointer.x, top: pointer.y }}>
-            <MousePointer2 className="w-8 h-8 text-white fill-red-600 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" />
+          <div className={p.pointer} style={{ left: pointer.x, top: pointer.y }}>
+            <MousePointer2 size={32} />
           </div>
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 text-white text-sm bg-black/80 px-4 py-2 rounded-full pointer-events-none">
-            Pointer · arrows move · OK click · Back exit
-          </div>
+          <div className={p.pointerHint}>Pointer · arrows move · OK click · Back exit</div>
         </>
       )}
 
       {/* Horná lišta */}
-      <div
-        className={`absolute top-0 inset-x-0 flex items-center gap-4 px-8 pt-6 pb-16 bg-gradient-to-b from-black/90 via-black/50 to-transparent transition-opacity duration-300 pointer-events-auto ${
-          visible && !pointer ? 'opacity-100' : 'opacity-0 invisible'
-        }`}
-      >
-        <button onClick={onExit} className={roundButton} aria-label="Back">
-          <ArrowLeft className="w-6 h-6" />
+      <div className={p.top} data-visible={visible && !pointer}>
+        <button onClick={onExit} className={p.back} aria-label="Back">
+          <ArrowLeft size={20} /><span>Back</span>
         </button>
-        <div className="min-w-0">
-          <p className="text-white text-xl font-bold truncate">{title}</p>
-          {subtitle && <p className="text-zinc-300 text-sm truncate">{subtitle}</p>}
+        <div className={p.titleBlock}>
+          <p>{title}</p>
+          {subtitle && <span>{subtitle}</span>}
         </div>
       </div>
 
       {/* Spodná lišta */}
-      <div
-        className={`absolute bottom-0 inset-x-0 px-8 pb-8 pt-24 bg-gradient-to-t from-black/95 via-black/60 to-transparent transition-opacity duration-300 pointer-events-auto ${
-          visible && !pointer ? 'opacity-100' : 'opacity-0 invisible'
-        }`}
-      >
+      <div className={p.bottom} data-visible={visible && !pointer}>
         {canControl && (
-          <div className="flex items-center gap-4 mb-5">
+          <div className={p.timeline}>
             <div
               ref={progressRef}
               role="slider"
@@ -498,79 +504,73 @@ export default function PlayerOverlay({
                 const rect = e.currentTarget.getBoundingClientRect()
                 controls.seek(((e.clientX - rect.left) / rect.width) * state.duration)
               }}
-              className="group/progress relative flex-1 h-8 flex items-center cursor-pointer outline-none"
+              className={p.progress}
             >
-              <div className="relative w-full h-1.5 rounded-full bg-white/25 group-focus-visible/progress:h-2.5 transition-[height] duration-150">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-red-600" style={{ width: `${progress}%` }} />
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-600 scale-0 group-focus-visible/progress:scale-125 group-hover/progress:scale-100 transition-transform duration-150 shadow-lg"
-                  style={{ left: `${progress}%` }}
-                />
+              <div className={p.track}>
+                <div className={p.fill} style={{ width: `${progress}%` }} />
+                <div className={p.knob} style={{ left: `${progress}%` }} />
+                {seekPreview !== null && <span className={p.preview} style={{ left: `${progress}%` }}>{formatTime(seekPreview)}</span>}
               </div>
             </div>
-            <span className="text-white text-base tabular-nums w-40 text-right">
-              {formatTime(displayTime)} / {formatTime(state.duration)}
+            <span className={p.time}>
+              {formatTime(displayTime)} <i>/</i> {formatTime(state.duration)}
             </span>
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className={p.controls}>
           {canControl && (
             <>
-              <button ref={playRef} onClick={togglePlay} className={roundButton} aria-label={state.paused ? 'Play' : 'Pause'}>
-                {state.paused || !state.ready ? <Play className="w-6 h-6 fill-current ml-0.5" /> : <Pause className="w-6 h-6 fill-current" />}
+              <button ref={playRef} onClick={togglePlay} className={`${p.round} ${p.main}`} aria-label={state.paused ? 'Play' : 'Pause'}>
+                {state.paused || !state.ready ? <Play size={24} fill="currentColor" style={{ marginLeft: 2 }} /> : <Pause size={24} fill="currentColor" />}
               </button>
-              <button onClick={() => { controls.seekBy(-SEEK_STEP); showFlash('back', '−10 s') }} className={roundButton} aria-label="Back 10 seconds">
-                <RotateCcw className="w-6 h-6" />
+              <button onClick={() => { controls.seekBy(-SEEK_STEP); showFlash('back', '−10 s') }} className={p.round} aria-label="Back 10 seconds">
+                <RotateCcw size={21} />
               </button>
-              <button onClick={() => { controls.seekBy(SEEK_STEP); showFlash('fwd', '+10 s') }} className={roundButton} aria-label="Forward 10 seconds">
-                <RotateCw className="w-6 h-6" />
+              <button onClick={() => { controls.seekBy(SEEK_STEP); showFlash('fwd', '+10 s') }} className={p.round} aria-label="Forward 10 seconds">
+                <RotateCw size={21} />
               </button>
             </>
           )}
           {!canControl && (
-            <button ref={playRef} onClick={interactWithPlayer} className={pillButton}>
-              <MousePointer2 className="w-5 h-5" />
+            <button ref={playRef} onClick={interactWithPlayer} className={p.pill}>
+              <MousePointer2 size={18} />
               Control player
             </button>
           )}
 
-          <div className="flex-1" />
+          <div className={p.spacer} />
 
           {onNext && (
-            <button onClick={onNext} className={pillButton}>
-              <SkipForward className="w-5 h-5" />
+            <button onClick={onNext} className={p.pill}>
+              <SkipForward size={18} />
               {nextLabel || 'Next episode'}
             </button>
           )}
           {sources.length > 1 && (
-            <button onClick={() => setPanel('sources')} className={pillButton}>
-              <Layers className="w-5 h-5" />
+            <button onClick={() => setPanel('sources')} className={p.pill}>
+              <Layers size={18} />
               {activeSource?.name || 'Source'}
             </button>
           )}
           {mode === 'bridge' && (
-            <button onClick={interactWithPlayer} className={roundButton} aria-label="Player menu (pointer)">
-              <MousePointer2 className="w-6 h-6" />
+            <button onClick={interactWithPlayer} className={p.round} aria-label="Player menu (pointer)">
+              <MousePointer2 size={20} />
             </button>
           )}
-          <button onClick={onReload} className={roundButton} aria-label="Reload stream">
-            <RefreshCw className="w-6 h-6" />
+          <button onClick={onReload} className={p.round} aria-label="Reload stream">
+            <RefreshCw size={20} />
           </button>
         </div>
       </div>
 
       {/* Panel zdrojov */}
       {panel === 'sources' && (
-        <div data-tv-trap className="absolute inset-0 z-20 flex justify-end bg-black/50 pointer-events-auto" onClick={() => setPanel(null)}>
-          <div
-            ref={sourcesPanelRef}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm h-full bg-zinc-950/95 border-l border-zinc-800 p-8 flex flex-col gap-2 overflow-y-auto"
-            style={{ animation: 'slideIn 0.2s ease forwards' }}
-          >
-            <h3 className="text-white text-xl font-bold mb-1">Source</h3>
-            <p className="text-zinc-500 text-sm mb-4">If one doesn&apos;t play, try another.</p>
+        <div data-tv-trap className={p.sourcesBackdrop} onClick={() => setPanel(null)}>
+          <div ref={sourcesPanelRef} onClick={(e) => e.stopPropagation()} className={p.sources}>
+            <p className={p.kicker}><span /> PLAYBACK SOURCE</p>
+            <h3>Choose a source<i>.</i></h3>
+            <p className={p.sourcesHint}>If one doesn&apos;t play, try another.</p>
             {sources.map((source) => {
               const active = activeSource?.url === source.url
               return (
@@ -581,15 +581,13 @@ export default function PlayerOverlay({
                     setPanel(null)
                     onSelectSource(source)
                   }}
-                  className={`flex items-center justify-between px-5 py-4 rounded-xl text-left text-base font-semibold outline-none transition-[background-color,transform] duration-150 focus-visible:bg-white focus-visible:text-black focus-visible:scale-[1.03] ${
-                    active ? 'bg-zinc-800 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                  className={p.source}
                 >
                   <span>
                     {source.name}
-                    {source.kind === 'file' && <span className="ml-2 text-xs text-amber-400">Plex</span>}
+                    {source.kind === 'file' && <em>Plex</em>}
                   </span>
-                  {active && <Check className="w-5 h-5" />}
+                  {active && <Check size={18} />}
                 </button>
               )
             })}
@@ -599,14 +597,15 @@ export default function PlayerOverlay({
 
       {/* Ďalšia epizóda */}
       {showNextCard && (
-        <div data-tv-trap className="absolute bottom-10 right-10 z-20 flex flex-col gap-3 bg-zinc-950/95 border border-zinc-800 rounded-2xl p-6 w-80 pointer-events-auto shadow-2xl">
-          <p className="text-zinc-400 text-sm">Up next{countdown !== null ? ` in ${countdown}s` : ''}</p>
-          <p className="text-white text-lg font-bold">{nextLabel || 'Next episode'}</p>
-          <div className="flex gap-2">
-            <button ref={nextButtonRef} onClick={() => onNext?.()} className={`${pillButton} bg-white text-black flex-1 justify-center`}>
-              <Play className="w-5 h-5 fill-current" /> Play
+        <div data-tv-trap className={p.next}>
+          <p className={p.kicker}><span /> UP NEXT{countdown !== null ? ` · ${countdown}s` : ''}</p>
+          <p className={p.nextTitle}>{nextLabel || 'Next episode'}</p>
+          <div className={p.nextBar}><i style={{ animationDuration: `${NEXT_COUNTDOWN}s` }} /></div>
+          <div className={p.nextActions}>
+            <button ref={nextButtonRef} onClick={() => onNext?.()} className={`${p.pill} ${p.pillLight}`}>
+              <Play size={18} fill="currentColor" /> Play now
             </button>
-            <button onClick={() => { setNextCancelled(true); show('play') }} className={pillButton}>
+            <button onClick={() => { setNextCancelled(true); show('play') }} className={p.pill}>
               Cancel
             </button>
           </div>

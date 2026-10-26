@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '@/components/layout/Navbar'
-import { Trash2, KeyRound, UserPlus, Check, X, Shield, Tv } from 'lucide-react'
+import { Check, KeyRound, Shield, Trash2, Tv, UserPlus, UserRound, X } from 'lucide-react'
+import Shell from '@/components/vantra/Shell'
+import ConfirmDialog from '@/components/vantra/ConfirmDialog'
+import s from '@/components/vantra/vantra.module.css'
+import a from './admin.module.css'
 
 type AdminUser = {
   id: string
@@ -13,228 +16,110 @@ type AdminUser = {
   created_at: string
 }
 
+async function request(method: string, body?: unknown, query = '') {
+  const response = await fetch(`/api/admin/users${query}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw Object.assign(new Error(data.error || 'Something went wrong'), { status: response.status })
+  return data
+}
+
+// Správa rodinných účtov: nový účet, heslo, PIN na TV prihlásenie, mazanie
 export default function AdminPage() {
   const router = useRouter()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [myId, setMyId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  // Formulár na nový účet
+  const [notice, setNotice] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<{ id: string; field: 'password' | 'pin'; value: string } | null>(null)
+  const [deleting, setDeleting] = useState<AdminUser | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  // Zmena hesla existujúceho účtu
-  const [resetId, setResetId] = useState<string | null>(null)
-  const [resetPassword, setResetPassword] = useState('')
-
-  // Zmena PIN-u (na TV prihlásenie)
-  const [pinId, setPinId] = useState<string | null>(null)
-  const [pinValue, setPinValue] = useState('')
-
-  const loadUsers = async () => {
-    const res = await fetch('/api/admin/users')
-    if (res.status === 403 || res.status === 401) {
-      router.push('/home')
-      return
+  const loadUsers = useCallback(async () => {
+    try {
+      const data = await request('GET')
+      setUsers(data.users || []); setMyId(data.me); setLoading(false)
+    } catch (err) {
+      if ((err as { status?: number }).status === 403 || (err as { status?: number }).status === 401) router.push('/home')
+      else { setError('Accounts could not be loaded. Please try again.'); setLoading(false) }
     }
-    const data = await res.json()
-    setUsers(data.users || [])
-    setMyId(data.me)
-    setLoading(false)
+  }, [router])
+
+  useEffect(() => { void Promise.resolve().then(loadUsers) }, [loadUsers])
+
+  async function createUser() {
+    setError(''); setNotice(''); setCreating(true)
+    try {
+      await request('POST', { email: newEmail.trim(), password: newPassword, display_name: newName.trim() || null })
+      setNotice(`Account for ${newEmail.trim()} is ready.`)
+      setNewEmail(''); setNewPassword(''); setNewName('')
+      await loadUsers()
+    } catch (err) { setError((err as Error).message) }
+    finally { setCreating(false) }
   }
 
-  useEffect(() => { loadUsers() }, [])
-
-  const createUser = async () => {
-    setError('')
-    setCreating(true)
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, password: newPassword, display_name: newName || null }),
-    })
-    setCreating(false)
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error || 'Failed to create user')
-      return
-    }
-    setNewEmail(''); setNewPassword(''); setNewName('')
-    loadUsers()
+  async function saveEdit() {
+    if (!editing) return
+    setError(''); setNotice('')
+    try {
+      await request('PATCH', { id: editing.id, [editing.field]: editing.value })
+      setNotice(editing.field === 'pin' ? 'TV PIN updated.' : 'Password updated.')
+      setEditing(null)
+    } catch (err) { setError((err as Error).message) }
   }
 
-  const savePassword = async () => {
-    if (!resetId) return
-    setError('')
-    const res = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: resetId, password: resetPassword }),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error || 'Failed to change password')
-      return
-    }
-    setResetId(null)
-    setResetPassword('')
+  async function deleteUser() {
+    if (!deleting) return
+    setBusy(true); setError('')
+    try {
+      await request('DELETE', undefined, `?id=${deleting.id}`)
+      setNotice(`${deleting.email} was removed.`); setDeleting(null)
+      await loadUsers()
+    } catch (err) { setError((err as Error).message) }
+    finally { setBusy(false) }
   }
 
-  const savePin = async () => {
-    if (!pinId) return
-    setError('')
-    const res = await fetch('/api/admin/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: pinId, pin: pinValue }),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error || 'Failed to change PIN')
-      return
-    }
-    setPinId(null)
-    setPinValue('')
-  }
+  const valid = editing ? (editing.field === 'pin' ? /^\d{4}$/.test(editing.value) : editing.value.length >= 8) : false
 
-  const deleteUser = async (user: AdminUser) => {
-    if (!confirm(`Naozaj vymazať účet ${user.email}? Zmaže sa aj jeho watchlist a história.`)) return
-    await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' })
-    loadUsers()
-  }
-
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-
-  return (
-    <div className="min-h-screen bg-black text-white fade-in">
-      <Navbar />
-
-      <div className="pt-24 px-4 md:px-8 pb-16 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-1 flex items-center gap-2">
-          <Shield className="w-6 h-6 text-red-500" /> Správa účtov
-        </h1>
-        <p className="text-zinc-500 text-sm mb-8">Účty pre rodinu — vytváranie, zmena hesla, mazanie</p>
-
-        {error && (
-          <div className="bg-red-950/50 border border-red-500/30 rounded-lg px-4 py-3 mb-6">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Nový účet */}
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 mb-8">
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-red-500" /> Nový účet
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <input
-              type="email" placeholder="email" value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-2 border border-zinc-800 focus:outline-none focus:border-red-500 text-sm"
-            />
-            <input
-              type="text" placeholder="heslo (min. 8 znakov)" value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-2 border border-zinc-800 focus:outline-none focus:border-red-500 text-sm"
-            />
-            <input
-              type="text" placeholder="meno (voliteľné)" value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-2 border border-zinc-800 focus:outline-none focus:border-red-500 text-sm"
-            />
-          </div>
-          <button
-            onClick={createUser}
-            disabled={creating || !newEmail || newPassword.length < 8}
-            className="mt-4 bg-red-600 hover:bg-red-500 text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {creating ? 'Vytváram...' : 'Vytvoriť účet'}
-          </button>
+  return <Shell>
+    <section className={s.personalHero}><div><p className={s.eyebrow}>FAMILY ACCOUNTS</p><h1>Who&apos;s watching<span>.</span></h1><p>Create profiles, set TV PINs and keep everyone&apos;s library private.</p></div><span className={s.personalHeroMark} aria-hidden="true"><Shield size={150} strokeWidth={.6} /></span></section>
+    <div className={s.personalContent}>
+      {error && <p role="alert" className={s.inlineError}>{error}</p>}
+      {notice && <p role="status" className={s.successNotice}><Check size={15} />{notice}</p>}
+      <section className={s.accountPanel}>
+        <div className={s.panelHeading}><div><h3>New account</h3><p>Everyone gets their own watchlist, history, ratings and collections.</p></div><UserPlus size={21} /></div>
+        <div className={a.form}>
+          <label>Email<input type="email" value={newEmail} onChange={event => setNewEmail(event.target.value)} placeholder="name@example.com" autoComplete="off" /></label>
+          <label>Password<input type="text" value={newPassword} onChange={event => setNewPassword(event.target.value)} placeholder="At least 8 characters" autoComplete="off" /></label>
+          <label>Display name<input type="text" value={newName} onChange={event => setNewName(event.target.value)} placeholder="Optional" maxLength={60} /></label>
         </div>
-
-        {/* Zoznam účtov */}
-        <div className="space-y-3">
-          {users.map((user) => (
-            <div key={user.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-wrap items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate flex items-center gap-2">
-                  {user.display_name || user.email.split('@')[0]}
-                  {user.is_admin && (
-                    <span className="text-xs bg-red-950 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">admin</span>
-                  )}
-                  {user.id === myId && <span className="text-xs text-zinc-500">(ty)</span>}
-                </p>
-                <p className="text-zinc-500 text-sm truncate">{user.email}</p>
-              </div>
-
-              {resetId === user.id ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text" placeholder="nové heslo" value={resetPassword} autoFocus
-                    onChange={(e) => setResetPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && savePassword()}
-                    className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-1.5 border border-red-500/50 focus:outline-none focus:border-red-500 text-sm w-40"
-                  />
-                  <button onClick={savePassword} disabled={resetPassword.length < 8} className="text-green-400 hover:text-green-300 disabled:opacity-40 p-1">
-                    <Check className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => { setResetId(null); setResetPassword('') }} className="text-zinc-500 hover:text-zinc-300 p-1">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setResetId(user.id); setResetPassword(''); setPinId(null) }}
-                  className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm border border-zinc-800 hover:border-zinc-600 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <KeyRound className="w-4 h-4" /> Zmeniť heslo
-                </button>
-              )}
-
-              {pinId === user.id ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text" placeholder="4 čísla" value={pinValue} autoFocus
-                    inputMode="numeric" maxLength={4}
-                    onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
-                    onKeyDown={(e) => e.key === 'Enter' && savePin()}
-                    className="bg-zinc-900 text-white placeholder-zinc-600 rounded-lg px-3 py-1.5 border border-red-500/50 focus:outline-none focus:border-red-500 text-sm w-24"
-                  />
-                  <button onClick={savePin} disabled={!/^\d{4}$/.test(pinValue)} className="text-green-400 hover:text-green-300 disabled:opacity-40 p-1">
-                    <Check className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => { setPinId(null); setPinValue('') }} className="text-zinc-500 hover:text-zinc-300 p-1">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setPinId(user.id); setPinValue(''); setResetId(null) }}
-                  className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm border border-zinc-800 hover:border-zinc-600 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Tv className="w-4 h-4" /> TV PIN
-                </button>
-              )}
-
-              {!user.is_admin && (
-                <button
-                  onClick={() => deleteUser(user)}
-                  className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-sm border border-red-500/30 hover:border-red-500/60 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" /> Vymazať
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+        <button className={s.primary} onClick={() => { void createUser() }} disabled={creating || !newEmail.trim() || newPassword.length < 8}><UserPlus size={15} />{creating ? 'Creating…' : 'Create account'}</button>
+      </section>
+      <div className={s.accountPageHeading}><div><p className={s.eyebrow}>EVERY PROFILE</p><h2>Accounts<span>.</span></h2></div><span>{users.length} PROFILES</span></div>
+      {loading ? <div className={s.accountSkeleton} aria-busy="true"><div /><div /></div> : <div className={a.list}>
+        {users.map(user => <article key={user.id} className={a.user}>
+          <span className={a.icon}><UserRound size={20} /></span>
+          <div className={a.identity}><strong>{user.display_name || user.email.split('@')[0]}{user.is_admin && <span className={a.badge}>admin</span>}{user.id === myId && <span className={a.you}>you</span>}</strong><small>{user.email}</small></div>
+          {editing?.id === user.id ? <div className={a.edit}>
+            <input type="text" value={editing.value} maxLength={editing.field === 'pin' ? 4 : 200} inputMode={editing.field === 'pin' ? 'numeric' : undefined} aria-label={editing.field === 'pin' ? 'New 4-digit PIN' : 'New password'} placeholder={editing.field === 'pin' ? '4 digits' : 'New password'} onChange={event => setEditing({ ...editing, value: editing.field === 'pin' ? event.target.value.replace(/\D/g, '') : event.target.value })} onKeyDown={event => { if (event.key === 'Enter' && valid) void saveEdit() }} />
+            <button className={a.action} aria-label="Save" disabled={!valid} onClick={() => { void saveEdit() }}><Check size={16} /></button>
+            <button className={a.action} aria-label="Cancel" onClick={() => setEditing(null)}><X size={16} /></button>
+          </div> : <div className={a.actions}>
+            <button className={a.action} onClick={() => setEditing({ id: user.id, field: 'password', value: '' })}><KeyRound size={15} /> Password</button>
+            <button className={a.action} onClick={() => setEditing({ id: user.id, field: 'pin', value: '' })}><Tv size={15} /> TV PIN</button>
+            {!user.is_admin && <button className={`${a.action} ${a.danger}`} onClick={() => setDeleting(user)}><Trash2 size={15} /> Remove</button>}
+          </div>}
+        </article>)}
+      </div>}
     </div>
-  )
+    {deleting && <ConfirmDialog icon={<Trash2 size={28} strokeWidth={1.3} />} title={`Remove ${deleting.display_name || deleting.email}?`} message="Their watchlist, history, ratings, collections and watched episodes are deleted as well. This can’t be undone." cancelLabel="Keep account" confirmLabel={busy ? 'Removing…' : 'Remove account'} busy={busy} onCancel={() => setDeleting(null)} onConfirm={() => { void deleteUser() }} />}
+  </Shell>
 }

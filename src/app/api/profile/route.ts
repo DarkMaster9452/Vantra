@@ -10,13 +10,13 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const rows = await sql`
-    SELECT p.display_name, p.avatar_url, u.is_admin
+    SELECT p.display_name, p.avatar_url, u.is_admin, u.created_at
     FROM users u LEFT JOIN profiles p ON p.id = u.id
     WHERE u.id = ${user.id}
   `
   const profile = rows[0] ?? { display_name: null, avatar_url: null, is_admin: false }
   return NextResponse.json({
-    user: { id: user.id, email: user.email, is_admin: profile.is_admin ?? false },
+    user: { id: user.id, email: user.email, is_admin: profile.is_admin ?? false, created_at: profile.created_at ?? null },
     profile: { display_name: profile.display_name, avatar_url: profile.avatar_url },
   })
 }
@@ -29,6 +29,10 @@ export async function PATCH(request: NextRequest) {
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
   if (typeof body.display_name === 'string') {
+    if (!body.display_name.trim() || body.display_name.trim().length > 60) {
+      return NextResponse.json({ error: 'Use a display name between 1 and 60 characters.' }, { status: 400 })
+    }
+    body.display_name = body.display_name.trim()
     await sql`
       INSERT INTO profiles (id, display_name) VALUES (${user.id}, ${body.display_name})
       ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()

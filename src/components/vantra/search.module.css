@@ -1,0 +1,30 @@
+/* Vyhľadávanie: na počítači okno ako v Balušíkovej verzii, na TV celá
+   obrazovka – klávesnica vľavo, výsledky vpravo. */
+.overlay { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-start; padding: 105px 20px 25px; background: #09090bcc; backdrop-filter: blur(10px); min-height: 0; }
+.panel { width: min(700px, 100%); max-height: calc(100svh - 130px); overflow: auto; overscroll-behavior: contain; border: 1px solid #ffffff24; border-radius: 17px; background: var(--surface); box-shadow: 0 35px 100px #000a; }
+.side { padding: 27px 28px 0; }
+.main { padding: 0 28px; }
+.display { cursor: default; }
+.typed { flex: 1; min-width: 0; font-size: 16px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.placeholder { color: #71717a; }
+.caret { color: var(--accent); font-weight: 300; margin-left: 1px; }
+.results { padding-bottom: 22px; }
+
+.tv { padding: 0; align-items: stretch; background: #09090bf2; }
+.tv .panel { width: 100%; max-height: none; height: 100%; display: grid; grid-template-columns: minmax(330px, 38%) minmax(0, 1fr); border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; }
+.tv .side { padding: 34px 26px 26px 5%; border-right: 1px solid var(--line); background: linear-gradient(180deg, #161619, #0f0f12); overflow: auto; }
+.tv .main { padding: 34px 5% 26px 30px; overflow: auto; }
+.tv .typed { font-size: 20px; }
+.tv .results { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tv .results > a { flex-direction: column; align-items: stretch; padding: 8px; border-radius: 10px; }
+.tv .results > a > img, .tv .results > a > span:first-child { width: 100%; height: auto; aspect-ratio: 2 / 3; border-radius: 7px; }
+.tv .results > a > svg { display: none; }
+.tv .results > a strong { font-size: 13px; }
+.tv .results > a:focus-visible { outline: none; background: #ffffff10; border-color: #fff; box-shadow: 0 0 0 3px #fff; transform: scale(1.04); }
+
+@media (max-width: 560px) {
+  .overlay { padding: 85px 12px 12px; }
+  .panel { max-height: calc(100svh - 104px); border-radius: 12px; }
+  .side { padding: 19px 18px 0; }
+  .main { padding: 0 18px; }
+}

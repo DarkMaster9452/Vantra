@@ -1,17 +1,29 @@
 @import "tailwindcss";
 
+/* Rovnaké tokeny ako .page / .chrome – aj pre okná vykreslené mimo stránky (portály) */
 :root {
-  --background: #0a0a0a;
+  --background: #09090b;
   --foreground: #ededed;
-  --accent: #E50914;
-  --accent-hover: #f40612;
+  --surface: #161619;
+  --surface-hover: #232326;
+  --text: #f5f5f7;
+  --muted: #a2a2ab;
+  --accent: #e50914;
+  --accent-hover: #ff2635;
   --accent-dark: #b20710;
+  --line: #ffffff14;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+html { scroll-behavior: smooth; scrollbar-gutter: stable; }
+html:has(main[data-player]) { scrollbar-gutter: auto; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }
 
 /* Scrollbar hide */
@@ -26,12 +38,13 @@ body {
 /* Custom scrollbar pre zvyšok */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #141414;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E50914;
+  background: #e50914;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -39,8 +52,7 @@ body {
 }
 
 /* TV / klávesnicová navigácia (Netflix / Disney+ štýl): biely focus ring.
-   V @layer base, aby ho prvky s vlastným focus štýlom (outline-none +
-   focus-visible:...) mohli prepísať Tailwind utilitami. */
+   V @layer base, aby ho prvky s vlastným focus štýlom mohli prepísať. */
 @layer base {
   :focus {
     outline: none;
@@ -50,12 +62,12 @@ body {
     outline-offset: 3px;
     border-radius: 10px;
   }
-  
+
   /* Focus musí byť jasne viditeľný aj zo sedačky – v TV režime hrubší */
   html[data-tv] :focus-visible {
     outline-width: 4px;
   }
-  
+
   /* Textové polia v TV režime: OK otvorí vlastnú klávesnicu */
   html[data-tv] input[readonly]:focus-visible,
   html[data-tv] textarea[readonly]:focus-visible {
@@ -65,12 +77,12 @@ body {
   }
 }
 
-/* Aby focusnutý prvok nezostal schovaný pod navbarom pri scrollovaní */
+/* Aby focusnutý prvok nezostal schovaný pod hlavičkou pri scrollovaní */
 a, button, input, select, textarea, [tabindex] {
   scroll-margin: 110px 28px;
 }
 
-/* Na TV žiadne modré "tap" zvýraznenie a plynulé transformácie na GPU */
+/* Na TV žiadne "tap" zvýraznenie a GPU vrstvy pre riadky */
 html[data-tv] * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -98,10 +110,30 @@ html[data-tv] * {
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .fade-in {
   animation: fadeIn 0.4s ease forwards;
 }
 
 .slide-in {
   animation: slideIn 0.3s ease forwards;
+}
+
+/* Hlavička zostáva mimo prechodu – animuje sa len prichádzajúci obsah */
+@keyframes routeEnter { from { opacity: .4; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.route-enter { animation: routeEnter .32s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .route-enter, .fade-in, .slide-in { animation: none; }
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
+
+/* TV: všetky focus rámiky biele a hrubšie (prebije farebné rámiky v moduloch,
+   no tam, kde modul focus rieši inak – outline: none – ostane jeho vzhľad) */
+html[data-tv] body :focus-visible {
+  outline-color: #fff;
+  outline-width: 3px;
 }
