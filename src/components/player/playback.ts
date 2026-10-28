@@ -124,7 +124,9 @@ function isSubtitleOption(value: unknown): value is SubtitleOption {
 export function useEmbedPlayback(
   iframeRef: RefObject<HTMLIFrameElement | null>,
   src: string,
-  onRemoteKey?: (key: string, repeat: boolean) => void
+  onRemoteKey?: (key: string, repeat: boolean) => void,
+  /** Skryť UI prehrávača (TV rozhranie); na PC zostáva UI prehrávača */
+  clean = true
 ) {
   // Stav patrí konkrétnemu zdroju – po prepnutí zdroja sa začína od nuly
   const [reported, setReported] = useState<{ src: string; state: Omit<PlaybackState, 'cue'> } | null>(null)
@@ -193,7 +195,7 @@ export function useEmbedPlayback(
       if (best) {
         mainFrame.current = best.frame
         // Video sa načítalo → UI prehrávača preč, ovláda sa len lištou Vantry
-        if (best.duration > 0 && cleanFrame.current !== best.frame) {
+        if (clean && best.duration > 0 && cleanFrame.current !== best.frame) {
           cleanFrame.current = best.frame
           send('clean', { target: best.frame })
         }
@@ -215,7 +217,7 @@ export function useEmbedPlayback(
 
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [src, send])
+  }, [src, send, clean])
 
   const target = () => mainFrame.current || undefined
   // Okamžitá odozva v UI, skutočný stav príde z bridge

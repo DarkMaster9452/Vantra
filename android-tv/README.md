@@ -30,6 +30,12 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 > adresy (zapne TV režim), alebo pripoj Google TV Streamer / Chromecast s Google TV /
 > Fire TV Stick a nainštaluj APK naň.
 
+## Novinky vo verzii 1.4 (versionCode 5)
+
+- Ovládanie hlasitosti sa v prehrávačoch nezobrazuje nikdy (ani pred skrytím ich UI).
+- „Ďalšia epizóda“ ponúka len už odvysielané epizódy.
+- Ten istý bridge funguje aj v PC prehliadači cez userscript (pozri hlavné README).
+
 ## Novinky vo verzii 1.3 (versionCode 4)
 
 - Prehrávač má jedinú lištu – Vantru. UI embed prehrávača (VidLink…) sa po

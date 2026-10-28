@@ -6,7 +6,7 @@ import { useHistory } from '@/hooks/useHistory'
 import VideoPlayer from '@/components/player/VideoPlayer'
 import PlayerOverlay, { type PlayerMode, type SourceOption } from '@/components/player/PlayerOverlay'
 import { useEmbedPlayback, useVideoPlayback } from '@/components/player/playback'
-import { hasPlayerBridge } from '@/components/tv/tvMode'
+import { hasPlayerBridge, isTVMode } from '@/components/tv/tvMode'
 
 interface Season {
   season_number: number
@@ -41,22 +41,28 @@ export default function WatchPage() {
   const [backdrop, setBackdrop] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [totalEpisodes, setTotalEpisodes] = useState<number | null>(null)
+  // Posledná odvysielaná epizóda – ďalej "Ďalšia epizóda" nevedie
+  const [lastAired, setLastAired] = useState<EpisodeRef | null>(null)
   // Bridge z Android TV appky (na serveri vždy false, na klientovi podľa okna)
   const bridge = useSyncExternalStore(subscribeNoop, hasPlayerBridge, () => false)
+  const tv = useSyncExternalStore(subscribeNoop, isTVMode, () => false)
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const remoteKeyRef = useRef<((key: string, repeat: boolean) => void) | null>(null)
 
   const isFile = activeProvider?.kind === 'file'
+  // TV rozhranie (len Vantra lišta, UI prehrávača skryté) – len TV appka s bridge.
+  // Na PC zostáva UI prehrávača; bridge z userscriptu v ňom len skryje hlasitosť.
+  const tvBridge = !isFile && bridge && tv
   const sourceKey = `${activeProvider?.url ?? ''}#${reloadKey}`
   const onRemoteKey = useCallback((key: string, repeat: boolean) => remoteKeyRef.current?.(key, repeat), [])
-  const embed = useEmbedPlayback(iframeRef, sourceKey, onRemoteKey)
+  const embed = useEmbedPlayback(iframeRef, sourceKey, onRemoteKey, tvBridge)
   // <video> je v DOM až po načítaní – dovtedy by sa hook nemal na čo napojiť
   // (bez toho Plex nehlásil stav a hlasitosť nebola zamknutá)
   const video = useVideoPlayback(videoRef, loading ? '' : sourceKey)
   const playback = isFile ? video : embed
-  const mode: PlayerMode = isFile ? 'video' : bridge ? 'bridge' : 'fallback'
+  const mode: PlayerMode = isFile ? 'video' : tvBridge ? 'bridge' : 'fallback'
 
   useEffect(() => {
     const fetchStream = async () => {
@@ -89,7 +95,11 @@ export default function WatchPage() {
               year = (data.release_date || data.first_air_date || '').slice(0, 4)
               posterPath = data.poster_path || ''
               setBackdrop(data.backdrop_path ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}` : null)
-              if (type === 'tv') setSeasons((data.seasons || []).filter((s: Season) => s.season_number > 0))
+              if (type === 'tv') {
+                setSeasons((data.seasons || []).filter((s: Season) => s.season_number > 0))
+                const last = data.last_episode_to_air
+                setLastAired(last ? { season: last.season_number, episode: last.episode_number } : null)
+              }
             }
           }
         } catch {
@@ -135,6 +145,10 @@ export default function WatchPage() {
     else {
       const following = seasons.find((s) => s.season_number > season && s.episode_count > 0)
       if (following) next = { season: following.season_number, episode: 1 }
+    }
+    // Neodvysielané epizódy (TMDB ich počíta do episode_count) prehrávače nemajú
+    if (next && lastAired && (next.season > lastAired.season || (next.season === lastAired.season && next.episode > lastAired.episode))) {
+      next = null
     }
   } else if (type === 'anime' && (totalEpisodes === null || episode < totalEpisodes)) {
     next = { season: 1, episode: episode + 1 }

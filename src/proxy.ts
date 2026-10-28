@@ -6,8 +6,9 @@ export async function proxy(request: NextRequest) {
   const user = token ? await verifySessionToken(token) : null
   const { pathname } = request.nextUrl
 
-  // API routes si autorizáciu riešia samy (vracajú 401 namiesto redirectu)
-  if (pathname.startsWith('/api')) {
+  // API routes si autorizáciu riešia samy (vracajú 401 namiesto redirectu),
+  // userscript pre PC je verejný (inštaluje ho Tampermonkey bez prihlásenia)
+  if (pathname.startsWith('/api') || pathname === '/vantra-bridge.user.js') {
     return NextResponse.next()
   }
 
