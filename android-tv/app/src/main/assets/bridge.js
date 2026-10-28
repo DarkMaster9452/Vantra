@@ -5,12 +5,16 @@
 //  - hlasitosť videí je zamknutá na 100 % a nedá sa stlmiť (hlasitosť rieši TV)
 //  - blokuje popupy / presmerovania z reklám (window.open, target=_blank, alert)
 //  - Vantra stránka cez postMessage ovláda video vo vnorených iframoch
-//    (play/pauza/posun/klik na súradnice) a dostáva späť jeho stav
+//    (play/pauza/posun/titulky/klik na súradnice) a dostáva späť jeho stav
+//  - keď video beží, skryje celé UI prehrávača (tlačidlá, hlasitosť, stredové
+//    play...) – zostane len obraz, ovláda sa výhradne lištou Vantry
+//  - titulky prehrávača (stopy videa + zoznamy titulkov z jeho API) ponúkne
+//    Vantre a vybrané titulky jej posiela riadok po riadku
 //  - klávesy ovládača, ktoré omylom skončia v iframe, posiela späť Vantre
 (function () {
   'use strict'
   if (window.__vantraBridge) return
-  window.__vantraBridge = 1
+  window.__vantraBridge = 2
 
   var isTop = window.top === window
   var frameId = Math.random().toString(36).slice(2)
@@ -86,6 +90,110 @@
     )
   }
 
+  // ── Titulky: zoznamy titulkov z API prehrávača ─────────────────────
+  // Prehrávače si zoznam titulkov sťahujú ako JSON (napr. captions: [{ url,
+  // language }]). Odpovede sa len prečítajú, prehrávač ich dostane nezmenené.
+  var subFiles = []
+  var subSeen = {}
+  var activeSub = null
+  var subToken = 0
+  var origFetch = window.fetch
+
+  var SUB_URL = /\.(vtt|srt)(\?|#|$)/i
+  var NOT_SUB = /\.(m3u8|mpd|mp4|m4s|ts|jpe?g|png|webp|gif)(\?|#|$)/i
+  var URL_KEYS = ['url', 'file', 'src', 'link', 'path', 'download']
+  var LABEL_KEYS = ['label', 'language', 'languageName', 'lang', 'display', 'name', 'title']
+  var CODE_KEYS = ['srclang', 'lang', 'code', 'iso_639_1', 'language']
+  var LANGS = {
+    en: 'en', eng: 'en', english: 'en',
+    sk: 'sk', slk: 'sk', slo: 'sk', slovak: 'sk', 'slovenčina': 'sk', slovencina: 'sk',
+    cs: 'cs', cz: 'cs', ces: 'cs', cze: 'cs', czech: 'cs', 'čeština': 'cs', cestina: 'cs',
+  }
+
+  // Jazyk ako krátky kód (sk, en…), inak prvé slovo názvu – podľa neho si
+  // Vantra pamätá, aké titulky zapnúť nabudúce
+  function langOf(code, label) {
+    var short = String(code || '').toLowerCase().split(/[-_]/)[0]
+    var word = (String(label || '').toLowerCase().match(/[a-zà-ž]+/) || [''])[0]
+    if (LANGS[short]) return LANGS[short]
+    if (LANGS[word]) return LANGS[word]
+    return /^[a-z]{2}$/.test(short) ? short : word || short
+  }
+
+  function first(obj, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var value = obj[keys[i]]
+      if (typeof value === 'string' && value) return value
+    }
+    return ''
+  }
+
+  function addSubFile(url, label, code) {
+    try { url = new URL(url, location.href).href } catch (e) { return }
+    if (subSeen[url] || subFiles.length >= 80) return
+    subSeen[url] = 1
+    var name = label || code || 'Subtitles ' + (subFiles.length + 1)
+    subFiles.push({ id: 'f' + subFiles.length, label: name, lang: langOf(code, name), url: url })
+    report()
+  }
+
+  function scanSubs(node, key, depth) {
+    if (!node || typeof node !== 'object' || depth > 8) return
+    if (Array.isArray(node)) {
+      var listKey = /caption|subtitle|subs|track/i.test(key)
+      for (var i = 0; i < node.length && i < 300; i++) {
+        var item = node[i]
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          var url = first(item, URL_KEYS)
+          var kind = String(item.kind || '')
+          if (url && !NOT_SUB.test(url) && (SUB_URL.test(url) || listKey) && !/thumb|chapter|metadata/i.test(kind)) {
+            addSubFile(url, first(item, LABEL_KEYS), first(item, CODE_KEYS))
+          }
+        }
+        scanSubs(item, key, depth + 1)
+      }
+      return
+    }
+    for (var k in node) {
+      if (Object.prototype.hasOwnProperty.call(node, k)) scanSubs(node[k], k, depth + 1)
+    }
+  }
+
+  function inspectText(text) {
+    if (typeof text !== 'string' || text.length > 3000000 || !/vtt|srt|caption|subtitle/i.test(text)) return
+    try { scanSubs(JSON.parse(text), '', 0) } catch (e) {}
+  }
+
+  if (!isTop) {
+    if (origFetch) {
+      window.fetch = function () {
+        var promise = origFetch.apply(window, arguments)
+        promise.then(function (res) {
+          try {
+            if (res.type === 'opaque' || !/json|text\/plain/i.test(res.headers.get('content-type') || '')) return
+            res.clone().text().then(inspectText, function () {})
+          } catch (e) {}
+        }, function () {})
+        return promise
+      }
+    }
+    // this = XMLHttpRequest, ktorý práve dobehol
+    var inspectXhr = function () {
+      try {
+        if (!/json|text\/plain/i.test(this.getResponseHeader('content-type') || '')) return
+        if (this.responseType === 'json') scanSubs(this.response, '', 0)
+        else if (this.responseType === '' || this.responseType === 'text') inspectText(this.responseText)
+      } catch (e) {}
+    }
+    try {
+      var xhrSend = XMLHttpRequest.prototype.send
+      XMLHttpRequest.prototype.send = function () {
+        this.addEventListener('load', inspectXhr)
+        return xhrSend.apply(this, arguments)
+      }
+    } catch (e) {}
+  }
+
   // ── Video v tomto rámci ────────────────────────────────────────────
   function videos() {
     return Array.prototype.slice.call(document.querySelectorAll('video'))
@@ -107,11 +215,35 @@
     return best
   }
 
+  // Stopy titulkov priamo vo videu (napr. z HLS streamu)
+  function nativeTracks(v) {
+    var out = []
+    var list = v.textTracks || []
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i]
+      if (!t.__vantra && (t.kind === 'subtitles' || t.kind === 'captions')) out.push(t)
+    }
+    return out
+  }
+
+  function subtitleOptions(v) {
+    var out = nativeTracks(v).map(function (t, i) {
+      var name = t.label || t.language || 'Track ' + (i + 1)
+      return { id: 't' + i, label: name, lang: langOf(t.language, name) }
+    })
+    subFiles.forEach(function (f) {
+      out.push({ id: f.id, label: f.label, lang: f.lang })
+    })
+    return out
+  }
+
+  // Stav ide rodičovi (nie rovno top), aby každý rámec po ceste vedel,
+  // ktorým iframom sa ide k hlavnému videu (pre skrytie UI prehrávača)
   function report() {
     var v = mainVideo()
     if (!v) return
     try {
-      window.top.postMessage(
+      window.parent.postMessage(
         {
           __vantra: 'state',
           frame: frameId,
@@ -120,13 +252,166 @@
           time: v.currentTime || 0,
           duration: isFinite(v.duration) ? v.duration : 0,
           buffering: v.readyState < 3 && !v.paused,
+          subtitles: subtitleOptions(v),
+          subtitle: activeSub,
         },
         '*'
       )
     } catch (e) {}
   }
 
-  // Simulovaný klik myšou na súradnice (virtuálny kurzor / štart prehrávača)
+  // ── Titulky: výber a posielanie riadkov Vantre ─────────────────────
+  function cleanCue(text) {
+    return String(text || '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\{\\[^}]*\}/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .trim()
+  }
+
+  function postCue(text) {
+    try { window.top.postMessage({ __vantra: 'cue', frame: frameId, text: text }, '*') } catch (e) {}
+  }
+
+  function toSeconds(stamp) {
+    var parts = stamp.replace(',', '.').split(':')
+    var total = 0
+    for (var i = 0; i < parts.length; i++) total = total * 60 + parseFloat(parts[i])
+    return total
+  }
+
+  // WebVTT aj SRT: bloky oddelené prázdnym riadkom, časy "00:01:02,500 --> …"
+  function parseSubs(text) {
+    var cues = []
+    String(text).replace(/^﻿/, '').replace(/\r/g, '').split(/\n{2,}/).forEach(function (block) {
+      var lines = block.split('\n')
+      var i = 0
+      while (i < lines.length && lines[i].indexOf('-->') === -1) i++
+      if (i >= lines.length) return
+      var m = /([\d:.,]+)\s*-->\s*([\d:.,]+)/.exec(lines[i])
+      if (!m) return
+      var start = toSeconds(m[1])
+      var end = toSeconds(m[2])
+      var body = lines.slice(i + 1).join('\n').trim()
+      if (body && end > start) cues.push([start, end, body])
+    })
+    return cues
+  }
+
+  // Titulky sa nikdy nekreslia v prehrávači (mode "hidden"), riadky ide
+  // zobraziť Vantra – rovnaký vzhľad pre všetky prehrávače
+  function watchTrack(t) {
+    t.oncuechange = function () {
+      var lines = []
+      var active = t.activeCues || []
+      for (var i = 0; i < active.length; i++) lines.push(cleanCue(active[i].text))
+      postCue(lines.join('\n'))
+    }
+  }
+
+  function selectSub(v, id) {
+    var token = ++subToken
+    activeSub = null
+    var list = v.textTracks || []
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].kind === 'subtitles' || list[i].kind === 'captions') {
+        list[i].oncuechange = null
+        list[i].mode = 'disabled'
+      }
+    }
+    postCue('')
+    if (!id) return
+
+    if (id.charAt(0) === 't') {
+      var track = nativeTracks(v)[parseInt(id.slice(1), 10)]
+      if (!track) return
+      watchTrack(track)
+      track.mode = 'hidden'
+      activeSub = id
+      return
+    }
+
+    var file = null
+    subFiles.forEach(function (f) { if (f.id === id) file = f })
+    if (!file || !origFetch) return
+    activeSub = id
+    origFetch.call(window, file.url)
+      .then(function (res) { return res.text() })
+      .then(function (text) {
+        if (token !== subToken) return
+        var cues = parseSubs(text)
+        if (!cues.length) throw new Error('empty')
+        var own = v.__vantraTrack
+        if (!own) {
+          own = v.__vantraTrack = v.addTextTrack('subtitles', 'Vantra', file.lang)
+          own.__vantra = true
+        }
+        own.mode = 'hidden'
+        while (own.cues && own.cues.length) own.removeCue(own.cues[0])
+        cues.forEach(function (c) {
+          try { own.addCue(new VTTCue(c[0], c[1], c[2])) } catch (e) {}
+        })
+        watchTrack(own)
+        own.oncuechange()
+        report()
+      })
+      .catch(function () {
+        if (token !== subToken) return
+        activeSub = null
+        report()
+      })
+  }
+
+  // ── Čisté video: UI prehrávača preč, zostane len obraz ─────────────
+  // visibility sa dedí, ale potomok si ju môže zapnúť späť – skryje sa
+  // všetko okrem hlavného videa (v rámcoch po ceste okrem iframu k nemu).
+  // DOM prehrávača sa nemení, takže sa nič nerozbije.
+  var CLEAN_CSS =
+    'html,body{background:#000!important}' +
+    'body *{visibility:hidden!important}' +
+    '[data-vantra-keep]{visibility:visible!important}' +
+    'video::-webkit-media-controls,video::-webkit-media-controls-enclosure{display:none!important}' +
+    'video::-webkit-media-text-track-container{display:none!important}'
+  var cleanStyle = null
+  var cleanTarget = null
+  // frame id → iframe v tomto dokumente, cez ktorý sa ide k tomu rámcu
+  var childFor = {}
+
+  function keepOnly(el) {
+    var marked = document.querySelectorAll('[data-vantra-keep]')
+    for (var i = 0; i < marked.length; i++) {
+      if (marked[i] !== el) marked[i].removeAttribute('data-vantra-keep')
+    }
+    if (!el) {
+      if (cleanStyle && cleanStyle.parentNode) cleanStyle.parentNode.removeChild(cleanStyle)
+      return
+    }
+    if (!el.hasAttribute('data-vantra-keep')) el.setAttribute('data-vantra-keep', '')
+    if (!cleanStyle) {
+      cleanStyle = document.createElement('style')
+      cleanStyle.textContent = CLEAN_CSS
+    }
+    if (!document.documentElement.contains(cleanStyle)) (document.head || document.documentElement).appendChild(cleanStyle)
+  }
+
+  function applyClean() {
+    if (!cleanTarget) keepOnly(null)
+    else if (cleanTarget === frameId) keepOnly(mainVideo())
+    else keepOnly(childFor[cleanTarget] || null)
+  }
+
+  function frameElementFor(win) {
+    var frames = document.querySelectorAll('iframe, frame')
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow === win) return frames[i]
+    }
+    return null
+  }
+
+  // Simulovaný klik myšou na súradnice (štart prehrávača, ak nehrá sám)
   function fire(el, type, x, y) {
     var opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0 }
     try {
@@ -147,19 +432,13 @@
     try { el.contentWindow.postMessage(copy, '*') } catch (e) {}
   }
 
-  function pointerAction(data) {
+  function clickAt(data) {
     var x = typeof data.x === 'number' ? data.x : window.innerWidth / 2
     var y = typeof data.y === 'number' ? data.y : window.innerHeight / 2
     var el = document.elementFromPoint(x, y)
     if (!el) return
     if (el.tagName === 'IFRAME' || el.tagName === 'FRAME') {
       forwardToFrame(el, data, x, y)
-      return
-    }
-    if (data.action === 'move') {
-      fire(el, 'pointermove', x, y)
-      fire(el, 'mousemove', x, y)
-      fire(el, 'mouseover', x, y)
       return
     }
     fire(el, 'pointerover', x, y)
@@ -193,6 +472,9 @@
       case 'seekBy':
         v.currentTime = Math.max(0, Math.min(v.currentTime + data.value, v.duration || Infinity))
         break
+      case 'subtitle':
+        selectSub(v, typeof data.id === 'string' ? data.id : null)
+        break
     }
     report()
   }
@@ -206,12 +488,29 @@
   if (!isTop) {
     window.addEventListener('message', function (e) {
       var data = e.data
-      if (!data || data.__vantra !== 'cmd') return
-      if (data.action === 'click' || data.action === 'move') {
-        pointerAction(data) // sám rozhodne, do ktorého vnoreného rámca ísť
+      if (!data || typeof data !== 'object') return
+
+      // Stav z vnoreného rámca → zapamätaj cestu k nemu a pošli ho vyššie
+      if (data.__vantra === 'state' && typeof data.frame === 'string') {
+        var el = e.source && e.source !== window ? frameElementFor(e.source) : null
+        if (!el) return
+        childFor[data.frame] = el
+        if (cleanTarget === data.frame) keepOnly(el)
+        try { window.parent.postMessage(data, '*') } catch (err) {}
         return
       }
-      applyCommand(data)
+
+      if (data.__vantra !== 'cmd') return
+      if (data.action === 'click') {
+        clickAt(data) // sám rozhodne, do ktorého vnoreného rámca ísť
+        return
+      }
+      if (data.action === 'clean') {
+        cleanTarget = typeof data.target === 'string' ? data.target : null
+        applyClean()
+      } else {
+        applyCommand(data)
+      }
       relayDown(data)
     })
 
@@ -232,9 +531,11 @@
       true
     )
 
-    // Autoplay + pravidelné hlásenie stavu
+    // Autoplay + pravidelné hlásenie stavu (prehrávač môže video vymeniť,
+    // čisté video sa preto drží na aktuálnom hlavnom videu)
     setInterval(function () {
       var v = mainVideo()
+      if (cleanTarget === frameId) keepOnly(v)
       if (!v) return
       if (!v.__vantraAutoplayed) {
         v.__vantraAutoplayed = true
