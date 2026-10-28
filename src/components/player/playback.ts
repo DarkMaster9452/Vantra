@@ -6,7 +6,14 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 //  - Plex: priamo <video> element
 //  - embed provideri: video vo vnorených cross-origin iframoch, ovládané cez
 //    bridge skript, ktorý Android TV appka vkladá do každého rámca
-//    (postMessage dole = príkazy, postMessage hore = stav videa)
+//    (postMessage dole = príkazy, postMessage hore = stav videa a titulky)
+
+export interface SubtitleOption {
+  id: string
+  label: string
+  /** Krátky kód jazyka (sk, en…), podľa neho sa pamätá voľba */
+  lang: string
+}
 
 export interface PlaybackState {
   /** Máme spojenie s videom (vieme play/pauza/posun) */
@@ -16,6 +23,12 @@ export interface PlaybackState {
   buffering: boolean
   time: number
   duration: number
+  /** Titulky, ktoré ponúka prehrávač */
+  subtitles: SubtitleOption[]
+  /** Zapnuté titulky (id), null = vypnuté */
+  subtitle: string | null
+  /** Aktuálny riadok titulkov (vykresľuje ho Vantra) */
+  cue: string
 }
 
 export interface PlaybackControls {
@@ -24,9 +37,9 @@ export interface PlaybackControls {
   pause: () => void
   seek: (time: number) => void
   seekBy: (delta: number) => void
-  /** Simulovaný klik do prehrávača na súradniciach (virtuálny kurzor) */
+  setSubtitle: (id: string | null) => void
+  /** Simulovaný klik do prehrávača na súradniciach (štart, ak nehrá sám) */
   click?: (x: number, y: number) => void
-  move?: (x: number, y: number) => void
 }
 
 export const EMPTY_STATE: PlaybackState = {
@@ -36,6 +49,9 @@ export const EMPTY_STATE: PlaybackState = {
   buffering: false,
   time: 0,
   duration: 0,
+  subtitles: [],
+  subtitle: null,
+  cue: '',
 }
 
 // ── Plex / priamy stream ─────────────────────────────────────────────
@@ -47,6 +63,7 @@ export function useVideoPlayback(videoRef: RefObject<HTMLVideoElement | null>, s
     if (!v) return
     const sync = () =>
       setState({
+        ...EMPTY_STATE,
         ready: v.readyState > 0,
         paused: v.paused,
         ended: v.ended,
@@ -87,15 +104,21 @@ export function useVideoPlayback(videoRef: RefObject<HTMLVideoElement | null>, s
       const v = videoRef.current
       if (v) v.currentTime = Math.max(0, Math.min(v.currentTime + d, v.duration || Infinity))
     },
+    setSubtitle: () => {},
   }
 
   return { state, controls }
 }
 
 // ── Embed iframe cez bridge ──────────────────────────────────────────
-interface FrameReport extends PlaybackState {
+interface FrameReport extends Omit<PlaybackState, 'cue'> {
   frame: string
   at: number
+}
+
+function isSubtitleOption(value: unknown): value is SubtitleOption {
+  const s = value as SubtitleOption | null
+  return !!s && typeof s.id === 'string' && typeof s.label === 'string' && typeof s.lang === 'string'
 }
 
 export function useEmbedPlayback(
@@ -104,19 +127,33 @@ export function useEmbedPlayback(
   onRemoteKey?: (key: string, repeat: boolean) => void
 ) {
   // Stav patrí konkrétnemu zdroju – po prepnutí zdroja sa začína od nuly
-  const [reported, setReported] = useState<{ src: string; state: PlaybackState } | null>(null)
-  const state = reported && reported.src === src ? reported.state : EMPTY_STATE
+  const [reported, setReported] = useState<{ src: string; state: Omit<PlaybackState, 'cue'> } | null>(null)
+  const [cue, setCue] = useState<{ src: string; text: string } | null>(null)
+  const state: PlaybackState = {
+    ...(reported && reported.src === src ? reported.state : EMPTY_STATE),
+    cue: cue && cue.src === src ? cue.text : '',
+  }
   const frames = useRef(new Map<string, FrameReport>())
   const mainFrame = useRef<string | null>(null)
+  // Rámec, v ktorom je už skryté UI prehrávača (zostal len obraz)
+  const cleanFrame = useRef<string | null>(null)
   const keyHandler = useRef(onRemoteKey)
 
   useEffect(() => {
     keyHandler.current = onRemoteKey
   }, [onRemoteKey])
 
+  const send = useCallback(
+    (action: string, extra: Record<string, unknown> = {}) => {
+      iframeRef.current?.contentWindow?.postMessage({ __vantra: 'cmd', action, ...extra }, '*')
+    },
+    [iframeRef]
+  )
+
   useEffect(() => {
     frames.current.clear()
     mainFrame.current = null
+    cleanFrame.current = null
 
     const onMessage = (e: MessageEvent) => {
       if (e.source === window) return
@@ -125,6 +162,10 @@ export function useEmbedPlayback(
 
       if (data.__vantra === 'key' && typeof data.key === 'string') {
         keyHandler.current?.(data.key, !!data.repeat)
+        return
+      }
+      if (data.__vantra === 'cue' && typeof data.text === 'string') {
+        setCue({ src, text: data.text })
         return
       }
       if (data.__vantra !== 'state' || typeof data.frame !== 'string') return
@@ -139,6 +180,8 @@ export function useEmbedPlayback(
         buffering: !!data.buffering,
         time: Number(data.time) || 0,
         duration: Number(data.duration) || 0,
+        subtitles: Array.isArray(data.subtitles) ? data.subtitles.filter(isSubtitleOption) : [],
+        subtitle: typeof data.subtitle === 'string' ? data.subtitle : null,
       })
 
       // Hlavné video = najdlhšie z aktívnych rámcov (reklamy sú krátke)
@@ -149,6 +192,11 @@ export function useEmbedPlayback(
       }
       if (best) {
         mainFrame.current = best.frame
+        // Video sa načítalo → UI prehrávača preč, ovláda sa len lištou Vantry
+        if (best.duration > 0 && cleanFrame.current !== best.frame) {
+          cleanFrame.current = best.frame
+          send('clean', { target: best.frame })
+        }
         setReported({
           src,
           state: {
@@ -158,6 +206,8 @@ export function useEmbedPlayback(
             buffering: best.buffering,
             time: best.time,
             duration: best.duration,
+            subtitles: best.subtitles,
+            subtitle: best.subtitle,
           },
         })
       }
@@ -165,18 +215,11 @@ export function useEmbedPlayback(
 
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [src])
-
-  const send = useCallback(
-    (action: string, extra: Record<string, unknown> = {}) => {
-      iframeRef.current?.contentWindow?.postMessage({ __vantra: 'cmd', action, ...extra }, '*')
-    },
-    [iframeRef]
-  )
+  }, [src, send])
 
   const target = () => mainFrame.current || undefined
   // Okamžitá odozva v UI, skutočný stav príde z bridge
-  const optimistic = (patch: Partial<PlaybackState>) =>
+  const optimistic = (patch: Partial<Omit<PlaybackState, 'cue'>>) =>
     setReported((r) => (r && r.src === src ? { src, state: { ...r.state, ...patch } } : r))
 
   const controls: PlaybackControls = {
@@ -191,8 +234,12 @@ export function useEmbedPlayback(
       optimistic({ time: t })
     },
     seekBy: (d) => send('seekBy', { value: d, target: target() }),
+    setSubtitle: (id) => {
+      send('subtitle', { id, target: target() })
+      optimistic({ subtitle: id })
+      setCue(null)
+    },
     click: (x, y) => send('click', { x, y }),
-    move: (x, y) => send('move', { x, y }),
   }
 
   return { state, controls }

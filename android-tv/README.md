@@ -30,6 +30,17 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 > adresy (zapne TV režim), alebo pripoj Google TV Streamer / Chromecast s Google TV /
 > Fire TV Stick a nainštaluj APK naň.
 
+## Novinky vo verzii 1.3 (versionCode 4)
+
+- Prehrávač má jedinú lištu – Vantru. UI embed prehrávača (VidLink…) sa po
+  načítaní videa úplne skryje: žiadne stredové play, žiadna hlasitosť, žiadne
+  „Control player“. Ostane len obraz.
+- Všetky tlačidlá sú na lište a dá sa na ne prejsť šípkami: Späť, časová os,
+  Play/Pauza, −10 s, +10 s, Titulky, Server, Ďalšia epizóda, Reload.
+- **Titulky** z prehrávača (napr. VidLink) sa vyberajú priamo vo Vantre a kreslí ich
+  Vantra. Slovenské sa zapnú samé, ak ich prehrávač má; voľba sa pamätá.
+- Virtuálny kurzor je preč – titulky aj server sú na lište.
+
 ## Novinky vo verzii 1.2 (versionCode 3)
 
 - WebView nikdy neotvorí systémovú klávesnicu (ani „napíš cez telefón“ na Google TV) –
@@ -54,17 +65,22 @@ odinštaluj (inak TV hlási „Aplikácia nebola nainštalovaná“) a potom sa 
 |---|---|
 | OK | play / pauza (ak prehrávač ešte nebeží, spustí ho) |
 | ◀ / ▶ | posun −10 s / +10 s (držanie zrýchľuje) |
-| ▲ / ▼ | ukáže ovládanie (zdroj, ďalšia epizóda, reload, kurzor) |
+| ▲ / ▼ | ukáže lištu; potom šípky chodia po tlačidlách a OK ich stlačí |
 | Play/Pause, ⏩, ⏪, ⏭ | fungujú vždy |
-| Späť | zavrie panel / kurzor, inak ukončí prehrávanie |
+| Späť | zavrie panel, inak ukončí prehrávanie |
 
-- **Hlasitosť** vo vnútri prehrávačov je zamknutá na 100 % a nedá sa zmeniť ani stlmiť –
-  hlasitosť sa rieši ovládačom TV.
+- **Lišta**: hore Späť, dole časová os (◀ / ▶ posúva) a tlačidlá Play/Pauza, −10 s, +10 s,
+  Titulky, Server, Ďalšia epizóda, Reload. UI samotného prehrávača je skryté.
+- **Hlasitosť** sa v prehrávači nenastavuje vôbec – je zamknutá na 100 % a nedá sa zmeniť
+  ani stlmiť; hlasitosť sa rieši ovládačom TV.
+- **Titulky**: zoznam berie Vantra z prehrávača (stopy videa aj titulky z jeho API).
+  Ak server titulky neponúka, skús iný server.
 - **Reklamy**: popupy (`window.open`), presmerovania, `intent://` odkazy a známe reklamné
   siete sú zablokované; klik do prehrávača ide cez Vantru, takže neodpáli „neviditeľnú“ reklamu.
-- **Kurzor** (ikona šípky v ovládaní): virtuálna myš na ovládanie menu samotného
-  prehrávača (výber servera, titulky…). Šípky hýbu, OK klikne, Späť skončí.
 - Po skončení epizódy sa po 10 s spustí ďalšia (dá sa zrušiť).
+- **V prehliadači** (bez appky) sa do cudzieho prehrávača zasahovať nedá: Vantra má len
+  hornú lištu (Späť, Server, Ďalšia epizóda, Reload) a keď sa schová, ovládač patrí
+  rovno prehrávaču.
 
 Ako to funguje: appka vkladá `app/src/main/assets/bridge.js` do každého rámca vrátane
 cross-origin iframov embed prehrávačov (`WebViewCompat.addDocumentStartJavaScript`).

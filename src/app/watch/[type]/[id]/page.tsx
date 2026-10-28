@@ -52,7 +52,9 @@ export default function WatchPage() {
   const sourceKey = `${activeProvider?.url ?? ''}#${reloadKey}`
   const onRemoteKey = useCallback((key: string, repeat: boolean) => remoteKeyRef.current?.(key, repeat), [])
   const embed = useEmbedPlayback(iframeRef, sourceKey, onRemoteKey)
-  const video = useVideoPlayback(videoRef, sourceKey)
+  // <video> je v DOM až po načítaní – dovtedy by sa hook nemal na čo napojiť
+  // (bez toho Plex nehlásil stav a hlasitosť nebola zamknutá)
+  const video = useVideoPlayback(videoRef, loading ? '' : sourceKey)
   const playback = isFile ? video : embed
   const mode: PlayerMode = isFile ? 'video' : bridge ? 'bridge' : 'fallback'
 
