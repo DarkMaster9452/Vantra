@@ -44,7 +44,21 @@ Access is restricted via an email whitelist in Supabase. Only pre-approved addre
 - Library tracking: watch status, private rating and note, collections with custom order, watched episodes, new-episode badges
 - Continue watching, For you, personal stats, film collections, person pages, catalog filters
 - TV mode (Android TV app or `?tv=1`): D-pad navigation everywhere, OK = select, Back = one step back, built-in on-screen keyboard (the system / "type on phone" keyboard never opens), player that starts on its own and is controlled straight from the remote: in the Android TV app the embed player's own UI is hidden and one Vantra bar (Back, seek, play/pause, ±10 s, subtitles, server, next episode, reload) takes over, with volume locked at 100%
+- PC browser: the player keeps its own UI (unlike TV), the volume control is hidden and locked at 100% once the [userscript](#pc-userscript) is installed
 - Database changes live in `db/migrations/` (apply them in order)
+
+#### PC userscript
+
+A web page can't touch the UI inside a cross-origin player iframe, so on PC the
+embed player's own volume control can only be removed by a userscript:
+
+1. Install [Tampermonkey](https://www.tampermonkey.net/) (or Violentmonkey). In Chrome,
+   Opera and Edge also turn on *Allow User Scripts* / developer mode for the extension.
+2. Open `https://<your-vantra>/vantra-bridge.user.js` and confirm the install.
+
+The script is the same `bridge.js` the Android TV app injects, and runs only on the
+embed player domains: volume control hidden and locked at 100%, ad popups blocked,
+up-next countdown at the end of an episode. On PC the player keeps its own controls.
 ![image alt](https://github.com/balusikf/Vantra/blob/main/Screenshot%202026-05-06%20172305.png?raw=true)
 ---
 

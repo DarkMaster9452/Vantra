@@ -103,7 +103,7 @@ public class MainActivity extends Activity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         // Web podľa tohto spozná TV režim (vlastná klávesnica, ovládanie prehrávača)
-        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.3");
+        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.4");
 
         // Session cookie musí prežiť reštart appky
         CookieManager cookieManager = CookieManager.getInstance();

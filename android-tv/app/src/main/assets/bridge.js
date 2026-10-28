@@ -1,8 +1,10 @@
 // VANTRA bridge – vkladá ho Android TV appka do KAŽDÉHO rámca (aj do
 // cross-origin iframov embed prehrávačov) ešte pred skriptmi stránky.
+// Na PC ho do prehrávačov vkladá userscript /vantra-bridge.user.js.
 //
 // Čo robí:
-//  - hlasitosť videí je zamknutá na 100 % a nedá sa stlmiť (hlasitosť rieši TV)
+//  - hlasitosť videí je zamknutá na 100 % a nedá sa stlmiť (hlasitosť rieši TV),
+//    ovládanie hlasitosti sa v prehrávačoch vôbec nezobrazuje
 //  - blokuje popupy / presmerovania z reklám (window.open, target=_blank, alert)
 //  - Vantra stránka cez postMessage ovláda video vo vnorených iframoch
 //    (play/pauza/posun/titulky/klik na súradnice) a dostáva späť jeho stav
@@ -18,6 +20,8 @@
 
   var isTop = window.top === window
   var frameId = Math.random().toString(36).slice(2)
+  // TV appka (ovládač) – na PC si prehrávač nechá vlastné UI aj klávesy
+  var isTV = /VantraTV/i.test(navigator.userAgent)
 
   // ── Hlasitosť: vždy 100 %, nikdy mute ──────────────────────────────
   try {
@@ -59,6 +63,27 @@
     v.addEventListener('loadedmetadata', report)
     v.addEventListener('seeked', report)
     fix()
+  }
+
+  // Ovládanie hlasitosti v prehrávačoch skryté (tlačidlo mute aj posuvník)
+  var NO_VOLUME_CSS =
+    '[aria-label*="volume" i],[aria-label*="mute" i],[title*="volume" i],[title*="mute" i],' +
+    '[class*="volume" i],[id*="volume" i],[data-testid*="volume" i]{display:none!important}' +
+    'media-mute-button,media-volume-slider,.jw-icon-volume,.jw-slider-volume,.plyr__volume,' +
+    '[data-plyr="mute"],.vjs-volume-panel,.vjs-mute-control{display:none!important}'
+  var noVolumeStyle = null
+  function attachNoVolume() {
+    var root = document.documentElement
+    if (!root) return
+    if (!noVolumeStyle) {
+      noVolumeStyle = document.createElement('style')
+      noVolumeStyle.textContent = NO_VOLUME_CSS
+    }
+    if (!root.contains(noVolumeStyle)) (document.head || root).appendChild(noVolumeStyle)
+  }
+  if (!isTop) {
+    attachNoVolume()
+    document.addEventListener('DOMContentLoaded', attachNoVolume)
   }
 
   // ── Reklamy: žiadne popupy ani presmerovania z iframov ─────────────
@@ -514,7 +539,7 @@
       relayDown(data)
     })
 
-    // Klávesy ovládača patria Vantre, nie prehrávaču v iframe
+    // Klávesy ovládača patria Vantre, nie prehrávaču v iframe (len TV appka)
     var KEYS = {
       ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, Enter: 1, ' ': 1,
       Escape: 1, Backspace: 1, MediaPlayPause: 1, MediaPlay: 1, MediaPause: 1,
@@ -523,7 +548,7 @@
     window.addEventListener(
       'keydown',
       function (e) {
-        if (!KEYS[e.key]) return
+        if (!isTV || !KEYS[e.key]) return
         e.preventDefault()
         e.stopImmediatePropagation()
         try { window.top.postMessage({ __vantra: 'key', key: e.key, repeat: e.repeat }, '*') } catch (err) {}
@@ -534,6 +559,7 @@
     // Autoplay + pravidelné hlásenie stavu (prehrávač môže video vymeniť,
     // čisté video sa preto drží na aktuálnom hlavnom videu)
     setInterval(function () {
+      attachNoVolume() // stránka si mohla prepísať <head>
       var v = mainVideo()
       if (cleanTarget === frameId) keepOnly(v)
       if (!v) return

@@ -251,10 +251,10 @@ export default function PlayerOverlay({
   }
 
   // Titulky v zapamätanom jazyku (predvolene slovenské) sa zapnú samé,
-  // hneď ako ich prehrávač ponúkne
+  // hneď ako ich prehrávač ponúkne. Bez Vantra lišty (PC) má titulky prehrávač.
   const subtitleKey = state.subtitles.map((s) => `${s.id}:${s.lang}`).join('|')
   useEffect(() => {
-    if (subtitleChosen.current || !state.subtitles.length || state.subtitle) return
+    if (!canControl || subtitleChosen.current || !state.subtitles.length || state.subtitle) return
     let wanted = DEFAULT_SUBTITLE_LANG
     try {
       wanted = localStorage.getItem(SUBTITLE_PREF_KEY) ?? DEFAULT_SUBTITLE_LANG
@@ -493,7 +493,7 @@ export default function PlayerOverlay({
       )}
 
       {/* Titulky – kreslí ich Vantra, nad lištou, keď je viditeľná */}
-      {state.cue && !intro && (
+      {state.cue && !intro && canControl && (
         <div className={p.cue} data-raised={visible}>
           {state.cue.split('\n').map((line, i) => (
             <span key={i}>{line}</span>
