@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       app_url:
-        description: 'URL nasadenej Vantry (napr. https://vantra.vercel.app)'
+        description: 'URL nasadenej Vantry (napr. https://vantra-six.vercel.app)'
         required: true
-        default: 'https://vantra.vercel.app'
+        default: 'https://vantra-six.vercel.app'
 
 jobs:
   build:

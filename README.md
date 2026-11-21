@@ -1,5 +1,5 @@
 # VANTRA
-![image alt](https://github.com/balusikf/Vantra/blob/main/Screenshot%202026-05-05%20185215.png?raw=true)
+![image alt](Screenshot%202026-05-05%20185215.png)
 > **This project is currently on hold and may or may not be continued in the future. It was a personal learning experience and is not in a fully finished state.**
 
 VANTRA is a personal, private streaming platform built in the style of Netflix. Designed for personal use and a small group of friends. Entirely non-commercial and built **for educational purposes only**. No content is hosted or uploaded anywhere.
@@ -59,7 +59,7 @@ embed player's own volume control can only be removed by a userscript:
 The script is the same `bridge.js` the Android TV app injects, and runs only on the
 embed player domains: volume control hidden and locked at 100%, ad popups blocked,
 up-next countdown at the end of an episode. On PC the player keeps its own controls.
-![image alt](https://github.com/balusikf/Vantra/blob/main/Screenshot%202026-05-06%20172305.png?raw=true)
+![image alt](Screenshot%202026-05-06%20172305.png)
 ---
 
 ## What Was Not Finished
