@@ -225,14 +225,25 @@ export default function SpatialNav() {
 
     // Focusnutý prvok zmizol (napr. výber profilu → PIN, zatvorený overlay)
     // → focus na hlavný prvok nového obsahu, nech ovládač nikdy "nevisí"
+    // Kým sa nová stránka načítava, je jediný ovládateľný prvok hlavička –
+    // vtedy chvíľu počkaj na obsah (inak by focus ostal na logu namiesto Play)
+    const refocus = (tries: number) => {
+      const active = document.activeElement
+      if (active && active !== document.body) return
+      const target = findInitialTarget()
+      if (!target) return
+      if (target.closest('nav, [data-app-header]') && tries < 15) {
+        setTimeout(() => refocus(tries + 1), 300)
+        return
+      }
+      target.focus({ preventScroll: true })
+    }
     const onFocusOut = (e: FocusEvent) => {
       if (e.relatedTarget) return
       const lost = e.target as HTMLElement
       setTimeout(() => {
         if (lost.isConnected && isVisible(lost)) return
-        const active = document.activeElement
-        if (active && active !== document.body) return
-        findInitialTarget()?.focus({ preventScroll: true })
+        refocus(0)
       }, 60)
     }
 
@@ -358,8 +369,10 @@ export default function SpatialNav() {
       if (hasFocus) return
       const target = findInitialTarget()
       // Kým sa načítavajú dáta, počkaj na [data-tv-autofocus] (max ~0,8 s),
-      // potom vezmi čokoľvek
-      if (target && (target.hasAttribute('data-tv-autofocus') || attempts > 5)) {
+      // potom vezmi čokoľvek z obsahu. Hlavičku (logo, menu) len ak sa obsah
+      // ani po ~4,5 s nenačítal – inak by focus pri pomalom načítaní ostal na logu.
+      const inHeader = Boolean(target?.closest('nav, [data-app-header]'))
+      if (target && (target.hasAttribute('data-tv-autofocus') || (attempts > 5 && !inHeader) || attempts > 30)) {
         target.focus({ preventScroll: true })
         if (!target.hasAttribute('data-tv-autofocus')) reveal(target, false)
         return

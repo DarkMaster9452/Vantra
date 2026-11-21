@@ -54,13 +54,13 @@ export default function Choice<T extends string>({ value, options, onChange, lab
 
   return <>
     <button ref={trigger} type="button" className={`${c.trigger} ${compact ? c.compact : ''} ${className || ''}`} aria-haspopup="listbox" aria-expanded={open} aria-controls={id} aria-label={`${label}: ${selected?.label || ''}`} disabled={disabled} onClick={() => setOpen(!open)}>
-      <span>{selected?.label || label}</span><ChevronDown size={14} className={open ? c.rotated : ''} />
+      <span>{selected?.label || label}</span><ChevronDown size={18} className={open ? c.rotated : ''} />
     </button>
     {open && position && createPortal(
       <div ref={menu} id={id} role="listbox" aria-label={label} data-tv-trap className={`${c.menu} ${position.up ? c.up : ''}`} style={{ left: position.left, top: position.top, minWidth: position.width }}
         onKeyDown={event => { if (event.key === 'Tab') close(false) }}>
         {options.filter(option => !option.hidden).map(option => <button key={option.value} type="button" role="option" aria-selected={option.value === value} onClick={() => { close(); if (option.value !== value) onChange(option.value) }}>
-          <span>{option.label}</span>{option.value === value && <Check size={14} />}
+          <span>{option.label}</span>{option.value === value && <Check size={18} />}
         </button>)}
       </div>,
       document.body
