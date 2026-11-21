@@ -30,6 +30,13 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 > adresy (zapne TV režim), alebo pripoj Google TV Streamer / Chromecast s Google TV /
 > Fire TV Stick a nainštaluj APK naň.
 
+## Novinky vo verzii 1.5 (versionCode 6)
+
+- Falošné okno **„Confirm you're not a robot“ s QR kódom**, ktoré reklamy v embed
+  prehrávačoch (napr. druhý server) každých pár minút dávajú cez film, sa hneď
+  odstráni a film hrá ďalej. Nie je to skutočná captcha – QR kód vedie na reklamu /
+  phishing, **neskenuj ho**. Pauza, ktorú si dal sám, zostane.
+
 ## Novinky vo verzii 1.4 (versionCode 5)
 
 - Ovládanie hlasitosti sa v prehrávačoch nezobrazuje nikdy (ani pred skrytím ich UI).

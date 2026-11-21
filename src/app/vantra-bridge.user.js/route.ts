@@ -18,8 +18,8 @@ export async function GET() {
     '// @name         Vantra – prehrávač bez hlasitosti',
     '// @namespace    https://github.com/DarkMaster9452/Vantra',
     // Pri zmene bridge.js zvýš spolu s verziou Android TV appky
-    '// @version      1.4',
-    '// @description  V prehrávačoch Vantry skryje ovládanie hlasitosti (vždy 100 %) a zablokuje popupy z reklám.',
+    '// @version      1.5',
+    '// @description  V prehrávačoch Vantry skryje ovládanie hlasitosti (vždy 100 %), zablokuje popupy z reklám a falošné QR okná „not a robot“.',
     ...PLAYER_HOSTS.flatMap((host) => [`// @match        *://${host}/*`, `// @match        *://*.${host}/*`]),
     '// @run-at       document-start',
     '// @grant        none',

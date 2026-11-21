@@ -46,6 +46,8 @@ public class MainActivity extends Activity {
             "mc.yandex.ru", "dtscout.com", "pushnami.com", "richpush.co", "zeroredirect1.com",
             "adsco.re", "adskeeper.com", "yllix.com", "popmyads.com", "clickaine.com", "aclib.net",
             "acscdn.com", "lijit.com", "33across.com", "inpagepush.com", "pushub.net", "vidoomy.com",
+            // falošné „Confirm you're not a robot“ okná s QR kódom
+            "qr-captcha.com",
     };
 
     /**
@@ -103,7 +105,7 @@ public class MainActivity extends Activity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         // Web podľa tohto spozná TV režim (vlastná klávesnica, ovládanie prehrávača)
-        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.4");
+        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.5");
 
         // Session cookie musí prežiť reštart appky
         CookieManager cookieManager = CookieManager.getInstance();
