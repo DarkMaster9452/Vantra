@@ -45,6 +45,9 @@ final class AdBlocker {
             "vidlink.pro", "vidfast.pro", "videasy.net", "multiembed.mov", "embed.su", "vidsrc.xyz",
             "autoembed.cc", "vidnest.fun", "tmdb.org", "themoviedb.org", "anilist.co", "plex.direct",
             "plex.tv",
+            // domény, na ktoré sa embed prehrávače presmerujú (vidfast.pro → .vc, videasy.net → .to,
+            // multiembed.mov → streamingnow.mov), a JW Player, na ktorom beží VidLink
+            "vidfast.vc", "videasy.to", "streamingnow.mov", "jwplayer.com", "jwpcdn.com",
     };
 
     private final String appHost;

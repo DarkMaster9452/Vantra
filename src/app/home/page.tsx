@@ -15,8 +15,8 @@ export default async function HomePage() {
     ? (result.value.results as TMDBMedia[]).filter(item => item.media_type !== 'person')
     : [])
 
-  // Spotlight: 5 trending titulov s originálnym logom titulu (TMDB)
-  const spotlight: SpotlightMedia[] = await Promise.all(catalog[0].filter(item => item.backdrop_path).slice(0, 5).map(async item => {
+  // Hlavný titul hore: prvý trending titul s originálnym logom (TMDB)
+  const spotlight: SpotlightMedia[] = await Promise.all(catalog[0].filter(item => item.backdrop_path).slice(0, 1).map(async item => {
     try {
       const images: { logos: TMDBTitleLogo[] } = await getMediaImages(item.id, item.media_type === 'tv' ? 'tv' : 'movie')
       const logos = images.logos.filter(logo => logo.width > 0 && logo.height > 0)

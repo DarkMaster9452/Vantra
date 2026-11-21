@@ -95,7 +95,7 @@ export default function AdminPage() {
       {error && <p role="alert" className={s.inlineError}>{error}</p>}
       {notice && <p role="status" className={s.successNotice}><Check size={15} />{notice}</p>}
       <section className={s.accountPanel}>
-        <div className={s.panelHeading}><div><h3>New account</h3><p>Everyone gets their own watchlist, history, ratings and collections.</p></div><UserPlus size={21} /></div>
+        <div className={s.panelHeading}><div><h3>New account</h3><p>Everyone gets their own list and history.</p></div><UserPlus size={21} /></div>
         <div className={a.form}>
           <label>Email<input type="email" value={newEmail} onChange={event => setNewEmail(event.target.value)} placeholder="name@example.com" autoComplete="off" /></label>
           <label>Password<input type="text" value={newPassword} onChange={event => setNewPassword(event.target.value)} placeholder="At least 8 characters" autoComplete="off" /></label>

@@ -1,13 +1,16 @@
 'use client'
 
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, ArrowUpRight, BarChart3, Bookmark, Camera, Check, History, LogOut, Shield, ShieldCheck, UserRound } from 'lucide-react'
+import { Camera, LogOut, Shield } from 'lucide-react'
 import { useAccount } from '@/components/vantra/AccountProvider'
 import Avatar from '@/components/vantra/Avatar'
 import Shell, { ErrorPanel } from '@/components/vantra/Shell'
-import s from '@/components/vantra/vantra.module.css'
+import { isTVMode } from '@/components/tv/tvMode'
+
+const subscribeNoop = () => () => {}
+import u from '@/components/vantra/ui.module.css'
 
 function NameForm({ name, save }: { name: string; save: (name: string) => Promise<boolean> }) {
   const [value, setValue] = useState(name)
@@ -19,7 +22,7 @@ function NameForm({ name, save }: { name: string; save: (name: string) => Promis
     setBusy(true); setSaved(false)
     try { if (await save(value.trim())) setSaved(true) } finally { setBusy(false) }
   }
-  return <form onSubmit={submit} className={s.accountForm}><label htmlFor="display-name">Display name</label><p>This is how you appear around Vantra.</p><div className={s.nameField}><UserRound size={18} /><input id="display-name" name="display_name" value={value} onChange={event => { setValue(event.target.value); setSaved(false) }} autoComplete="nickname" required maxLength={60} /></div><div className={s.formFoot}><span role="status">{saved ? <><Check size={14} /> Changes saved</> : `${value.length}/60 characters`}</span><button className={s.primary} disabled={busy || !value.trim() || value.trim() === name.trim()}>{busy ? 'Saving…' : 'Save changes'}<ArrowRight size={15} /></button></div></form>
+  return <form onSubmit={submit} className={u.field}><label htmlFor="display-name" className={u.label}>Name</label><input id="display-name" data-tv-autofocus className={u.input} name="display_name" value={value} onChange={event => { setValue(event.target.value); setSaved(false) }} autoComplete="nickname" required maxLength={60} /><div className={u.formRow}><button className={u.secondary + ' ' + u.small} disabled={busy || !value.trim() || value.trim() === name.trim()}>{busy ? 'Saving…' : 'Save'}</button><span role="status" className={u.status}>{saved ? 'Saved' : ''}</span></div></form>
 }
 
 // Zmenší obrázok (max. 256 px, výrez na štvorec) a vráti ho ako data URL – ukladá sa priamo do DB
@@ -100,22 +103,23 @@ export default function ProfilePage() {
       router.replace('/login'); router.refresh()
     } catch { setError('Could not sign out. Please try again.'); setSigningOut(false) }
   }
+  // Na TV sa fotka nahrať nedá (WebView nemá výber súborov) – tlačidlo tam nebude
+  const tv = useSyncExternalStore(subscribeNoop, isTVMode, () => false)
   const name = profile?.display_name || 'Your profile'
   const joined = user?.created_at ? new Date(user.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : null
 
-  return <Shell><section className={s.personalHero}><div><p className={s.eyebrow}>YOUR SPACE, YOUR STORIES</p><h1>Make it yours<span>.</span></h1><p>A little more you. A little more Vantra.</p></div><span className={s.personalHeroMark} aria-hidden="true">VΛ</span></section>
-    <div className={s.personalContent}>
-      {loading ? <div className={s.accountSkeleton} aria-busy="true" aria-label="Loading your profile"><div /><div /></div> : accountError || !profile || !user ? <ErrorPanel title="Your profile is taking a break." message={accountError || 'Please reload to load your account.'} retry={() => { void refresh() }} /> : <div className={s.accountLayout}>
-        <aside className={s.accountSidebar}><div className={s.identityCard}><Avatar large /><h2>{name}</h2>{joined && <p>Member since {joined}</p>}<span className={s.memberBadge}><ShieldCheck size={13} /> Your private space</span></div><div className={s.accountNav}>{user.is_admin && <Link href="/admin"><Shield size={17} /> Manage accounts<ArrowUpRight size={14} /></Link>}<span className={s.accountNavActive}><UserRound size={17} /> Profile & account</span><Link href="/profile/stats"><BarChart3 size={17} /> Your statistics<ArrowUpRight size={14} /></Link><Link href="/library"><Bookmark size={17} /> My library<ArrowUpRight size={14} /></Link><Link href="/library?tab=history"><History size={17} /> Watch history<ArrowUpRight size={14} /></Link></div><button className={s.signOut} onClick={signOut} disabled={signingOut}><LogOut size={16} />{signingOut ? 'Signing out…' : 'Switch profile'}</button></aside>
-        <div className={s.accountPanels}>
-          <div className={s.accountPageHeading}><div><p className={s.eyebrow}>THE DETAILS THAT MAKE YOU, YOU</p><h2>Profile & account<span>.</span></h2></div><span>01 / PERSONAL</span></div>
-          {error && <p role="alert" className={s.inlineError}>{error}</p>}{notice && <p role="status" className={s.successNotice}><Check size={15} />{notice}</p>}
-          <section className={s.accountPanel}><div className={s.panelHeading}><div><h3>Profile photo</h3><p>A familiar face, wherever the story takes you.</p></div><Camera size={21} /></div><div className={s.photoSettings}><Avatar large /><div><div className={s.photoActions}><button className={s.secondary} disabled={avatarBusy} onClick={() => fileInput.current?.click()}><Camera size={15} />{avatarBusy ? 'Updating photo…' : 'Change photo'}</button>{profile.avatar_url && <button className={s.textButton} disabled={avatarBusy} onClick={removeAvatar}>Remove photo</button>}</div><p>JPEG, PNG or WebP · up to 5 MB<br />Cropped and optimized automatically.</p><input hidden ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload profile photo" onChange={uploadAvatar} /></div></div></section>
-          <section className={s.accountPanel}><div className={s.panelHeading}><div><h3>Personal details</h3><p>Your name. Your place in the credits.</p></div><UserRound size={21} /></div><NameForm key={profile.display_name} name={profile.display_name || ''} save={saveName} /><div className={s.emailField}><label htmlFor="account-email">Email address</label><input id="account-email" value={user.email || ''} readOnly aria-describedby="email-note" /><p id="email-note"><ShieldCheck size={13} /> Used to sign in to your account.</p></div></section>
-          <Link href="/profile/stats" className={s.accountLibraryLink}><span className={s.accountLibraryIcon}><BarChart3 size={25} strokeWidth={1.3} /></span><div><p className={s.eyebrow}>YOUR VIEWING JOURNAL</p><h3>Your stories, in numbers.</h3><p>Explore your activity, private ratings and finished stories.</p></div><ArrowUpRight size={23} /></Link>
-          <Link href="/library" className={s.accountLibraryLink}><span className={s.accountLibraryIcon}><Bookmark size={25} strokeWidth={1.3} /></span><div><p className={s.eyebrow}>READY WHEN YOU ARE</p><h3>Your next great night is saved.</h3><p>Pick up your watchlist and revisit recent stories.</p></div><ArrowUpRight size={23} /></Link>
-        </div>
-      </div>}
-    </div>
-  </Shell>
+  // Profil ako Netflix: fotka, meno, správa účtov (admin) a prepnutie profilu
+  return <Shell><div className={u.profile}>
+    <h1 className={u.pageTitle}>Profile</h1>
+    {loading ? <p className={u.status} aria-busy="true" style={{ marginTop: 26 }}>Loading…</p> : accountError || !profile || !user ? <ErrorPanel title="Your profile isn’t available right now." message={accountError || 'Please try again in a moment.'} retry={() => { void refresh() }} /> : <>
+      <div className={u.profileCard} style={{ marginTop: 26 }}><Avatar large /><div><h2 className={u.profileName}>{name}</h2>{joined && <p className={u.profileMeta}>Member since {joined}</p>}{!tv && <div className={u.formRow}><button className={u.secondary + ' ' + u.small} disabled={avatarBusy} onClick={() => fileInput.current?.click()}><Camera size={20} />{avatarBusy ? 'Updating…' : 'Change photo'}</button>{profile.avatar_url && <button className={u.pill} disabled={avatarBusy} onClick={removeAvatar}>Remove photo</button>}</div>}<input hidden ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload profile photo" onChange={uploadAvatar} /></div></div>
+      {error && <p role="alert" className={u.sectionError}>{error}</p>}{notice && <p role="status" className={u.sectionNote}>{notice}</p>}
+      <NameForm key={profile.display_name} name={profile.display_name || ''} save={saveName} />
+      <div className={u.list}>
+        {user.is_admin && <Link href="/admin" className={u.listButton}><Shield size={22} /> Manage accounts</Link>}
+        <button className={u.listButton} onClick={signOut} disabled={signingOut}><LogOut size={22} />{signingOut ? 'Signing out…' : 'Switch profile'}</button>
+      </div>
+      <p className={u.credit}>Movie and series data from TMDB. Anime data from AniList.</p>
+    </>}
+  </div></Shell>
 }
