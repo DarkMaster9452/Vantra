@@ -12,7 +12,9 @@ zobrazí ako normálna aplikácia s ikonou v launcheri.
 3. Po dobehnutí buildu si zo stránky workflow runu stiahni artefakt **vantra-tv-apk**
    (je to zip, vo vnútri je `app-debug.apk`).
 
-Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -PvantraUrl="https://tvoja-url"`
+Lokálny build (ak máš Android SDK):
+`bash android-tv/scripts/fetch-adhosts.sh && gradle -p android-tv assembleDebug -PvantraUrl="https://tvoja-url"`
+(bez prvého príkazu appka blokuje reklamy len podľa malého vstavaného zoznamu)
 
 ## Inštalácia z USB na Android TV / Google TV
 
@@ -32,6 +34,18 @@ Lokálny build (ak máš Android SDK): `gradle -p android-tv assembleDebug -Pvan
 
 ## Novinky vo verzii 1.5 (versionCode 6)
 
+- **Blokovanie reklám** podľa veľkého zoznamu (HaGeZi Multi PRO + Pop-Up Ads,
+  cca 245 000 domén: reklamy, popupy, trackery, phishing). Zoznam sa stiahne pri
+  každom builde APK (`android-tv/scripts/fetch-adhosts.sh`), takže je vždy čerstvý.
+  Vantra, embed prehrávače, TMDB a Plex sa nezablokujú nikdy.
+- **Vidno len Vantru a video**: kým sa film naozaj nerozbehne, prehrávač zakrýva
+  úvodná obrazovka Vantry – UI cudzieho prehrávača, výber serverov ani reklamy
+  nie je vidno. Ovládanie je pri všetkých serveroch rovnaké (lišta Vantry).
+- **Server, ktorý sa do 25 s nerozbehne, sa sám prepne na ďalší** (na úvodnej
+  obrazovke vidno, ktorý sa skúša). Počas načítania ide ▼ otvoriť lištu a vybrať
+  server ručne.
+- Lišta prehrávača na TV už nerozmazáva video pod sebou – video pri zobrazenej
+  lište nesekalo.
 - Falošné okno **„Confirm you're not a robot“ s QR kódom**, ktoré reklamy v embed
   prehrávačoch (napr. druhý server) každých pár minút dávajú cez film, sa hneď
   odstráni a film hrá ďalej. Nie je to skutočná captcha – QR kód vedie na reklamu /

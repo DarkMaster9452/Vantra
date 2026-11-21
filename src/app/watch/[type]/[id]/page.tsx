@@ -36,6 +36,9 @@ export default function WatchPage() {
   const [activeProvider, setActiveProvider] = useState<SourceOption | null>(null)
   // Zvyšuje sa pri "Reload" – nový key = nový iframe/video
   const [reloadKey, setReloadKey] = useState(0)
+  // Servery, ktoré sa pri tomto titule nerozbehli, a správa pre úvodnú obrazovku
+  const [failed, setFailed] = useState<string[]>([])
+  const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [backdrop, setBackdrop] = useState<string | null>(null)
@@ -67,6 +70,8 @@ export default function WatchPage() {
   useEffect(() => {
     const fetchStream = async () => {
       setLoading(true)
+      setFailed([])
+      setNotice(null)
       try {
         // Najprv metadáta – titul a rok idú do stream API kvôli vyhľadaniu
         // v Plex knižnici, a rovno poslúžia aj pre históriu a ďalšiu epizódu
@@ -167,6 +172,32 @@ export default function WatchPage() {
 
   const exit = useCallback(() => router.back(), [router])
 
+  // Server sa nerozbehol → automaticky ďalší (používateľ nevidí cudzí prehrávač)
+  const onStall = useCallback(() => {
+    if (!activeProvider) return
+    const tried = [...failed, activeProvider.url]
+    const next = providers.find((source) => source.kind !== 'file' && !tried.includes(source.url))
+    setFailed(tried)
+    if (next) {
+      setNotice(`${activeProvider.name} didn't start – trying ${next.name}…`)
+      setActiveProvider(next)
+    } else {
+      setNotice('No server could start this title. Press ▼ to pick a server or reload.')
+    }
+  }, [activeProvider, failed, providers])
+
+  const selectSource = useCallback((source: SourceOption) => {
+    setFailed([])
+    setNotice(null)
+    setActiveProvider(source)
+  }, [])
+
+  const reload = useCallback(() => {
+    setFailed([])
+    setNotice(null)
+    setReloadKey((k) => k + 1)
+  }, [])
+
   const subtitle =
     type === 'tv' ? `Season ${season} · Episode ${episode}` : type === 'anime' ? `Episode ${episode}` : undefined
   const nextLabel = next ? (type === 'tv' ? `S${next.season}:E${next.episode}` : `Episode ${next.episode}`) : undefined
@@ -210,14 +241,16 @@ export default function WatchPage() {
           subtitle={subtitle}
           sources={providers}
           activeSource={activeProvider}
-          onSelectSource={(source) => setActiveProvider(source)}
-          onReload={() => setReloadKey((k) => k + 1)}
+          onSelectSource={selectSource}
+          onReload={reload}
           onNext={next ? goNext : null}
           nextLabel={nextLabel}
           onExit={exit}
           iframeRef={iframeRef}
           remoteKeyRef={remoteKeyRef}
           backdrop={backdrop}
+          notice={notice}
+          onStall={onStall}
         />
       )}
     </main>
