@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android TV: zoznam reklamných domén sa sťahuje pri builde APK
+/android-tv/app/src/main/assets/adhosts.txt

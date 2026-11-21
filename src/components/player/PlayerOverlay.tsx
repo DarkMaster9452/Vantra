@@ -35,7 +35,10 @@ import p from './player.module.css'
 // Režimy:
 //   video    – Plex <video>, plná kontrola
 //   bridge   – embed iframe ovládaný cez bridge z Android TV appky; UI
-//              prehrávača je skryté (zostane len obraz), titulky kreslí Vantra
+//              prehrávača je skryté (zostane len obraz), titulky kreslí Vantra.
+//              Kým video naozaj nehrá, prekrýva prehrávač úvodná obrazovka
+//              Vantry – cudzie UI, výber serverov ani reklamy nie je vidno.
+//              Keď sa server do STALL_MS nerozbehne, skúsi sa ďalší (onStall).
 //   fallback – bežný prehliadač bez bridge: do cudzieho prehrávača sa nedá
 //              zasahovať, Vantra má len hornú lištu (Späť, Server, Ďalšia
 //              epizóda) a po jej skrytí ovládač patrí rovno prehrávaču
@@ -67,11 +70,17 @@ interface PlayerOverlayProps {
   remoteKeyRef?: React.MutableRefObject<((key: string, repeat: boolean) => void) | null>
   /** Pozadie titulu na úvodnú obrazovku, kým sa video rozbehne */
   backdrop?: string | null
+  /** Správa na úvodnej obrazovke (napr. prepínanie na ďalší server) */
+  notice?: string | null
+  /** Server sa nerozbehol (bridge) – skúsiť ďalší */
+  onStall?: () => void
 }
 
 const HIDE_DELAY = 4000
 const SEEK_STEP = 10
 const NEXT_COUNTDOWN = 10
+// Za ten čas sa embed (aj s automatickými klikmi na play) musí rozbehnúť
+const STALL_MS = 25000
 // Zapamätaný jazyk titulkov ('off' = vypnuté); bez voľby sa zapnú slovenské,
 // ak ich prehrávač má (rovnaký jazyk ako SUB_LANG v /api/stream)
 const SUBTITLE_PREF_KEY = 'vantra_subtitles'
@@ -103,6 +112,8 @@ export default function PlayerOverlay({
   iframeRef,
   remoteKeyRef,
   backdrop,
+  notice,
+  onStall,
 }: PlayerOverlayProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const backRef = useRef<HTMLButtonElement>(null)
@@ -116,20 +127,32 @@ export default function PlayerOverlay({
   const seekRepeat = useRef(0)
   const subtitleChosen = useRef(false)
 
-  const [visible, setVisible] = useState(true)
+  // Embed: lišta až na požiadanie – úvodná obrazovka už ukazuje titul
+  const [visible, setVisible] = useState(mode !== 'bridge')
   const [panel, setPanel] = useState<'sources' | 'subtitles' | null>(null)
   const [seekPreview, setSeekPreview] = useState<number | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [nextCancelled, setNextCancelled] = useState(false)
 
   const canControl = mode !== 'fallback'
-  // Úvodná obrazovka s pozadím titulu, kým sa video nerozbehne (max. pár sekúnd)
+  // Embed hrá až vtedy, keď má video dĺžku – vtedy je už UI prehrávača skryté
+  const started = state.ready && state.duration > 0
+  // Úvodná obrazovka s pozadím titulu, kým sa video nerozbehne. V bridge
+  // režime bez časového limitu (inak by bolo vidno cudzí prehrávač).
   const [introDone, setIntroDone] = useState(false)
-  const intro = !introDone && !(canControl && state.ready)
+  const intro = mode === 'bridge' ? !started : !introDone && !(canControl && state.ready)
   useEffect(() => {
+    if (mode === 'bridge') return
     const timer = setTimeout(() => setIntroDone(true), mode === 'fallback' ? 2500 : 9000)
     return () => clearTimeout(timer)
   }, [mode])
+
+  // Server sa nerozbehol → ďalší server
+  useEffect(() => {
+    if (mode !== 'bridge' || started || !onStall) return
+    const timer = setTimeout(onStall, STALL_MS)
+    return () => clearTimeout(timer)
+  }, [mode, started, onStall])
   const showNextCard = !!onNext && state.ended && !nextCancelled
   const stateRef = useRef(state)
   const panelOpen = useRef(false)
@@ -478,6 +501,7 @@ export default function PlayerOverlay({
           <h1>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
           <span className={p.introSpinner}><Loader2 size={22} /> Starting your story…</span>
+          {notice && <div className={p.introNotice}>{notice}</div>}
         </div>
       </div>
 
@@ -485,10 +509,9 @@ export default function PlayerOverlay({
       {!canControl && <div className={p.reveal} onMouseEnter={() => show()} />}
 
       {/* Načítanie (len indikátor, žiadne stredové tlačidlo) */}
-      {!intro && canControl && (state.buffering || (mode === 'bridge' && !state.ready)) && (
+      {!intro && canControl && state.buffering && (
         <div className={p.center}>
           <Loader2 size={52} className={`${p.spin} ${p.buffering}`} />
-          {mode === 'bridge' && !state.ready && <div className={p.hint}>Loading player… press OK if it doesn&apos;t start</div>}
         </div>
       )}
 

@@ -23,6 +23,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Download ad blocklist
+        run: bash android-tv/scripts/fetch-adhosts.sh
+
       - name: Build APK
         run: gradle -p android-tv assembleDebug -PvantraUrl="${{ github.event.inputs.app_url }}"
 

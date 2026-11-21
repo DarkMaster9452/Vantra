@@ -31,23 +31,6 @@ import java.util.Collections;
 
 public class MainActivity extends Activity {
 
-    // Reklamné / popup siete – ich požiadavky sa vôbec nenačítajú
-    private static final String[] AD_HOSTS = {
-            "doubleclick.net", "googlesyndication.com", "googleadservices.com", "adservice.google.com",
-            "google-analytics.com", "googletagmanager.com", "googletagservices.com",
-            "popads.net", "popcash.net", "propellerads.com", "propellerclick.com", "onclickads.net",
-            "onclickalgo.com", "onclckads.com", "adsterra.com", "adsterratools.com", "exoclick.com",
-            "exosrv.com", "juicyads.com", "trafficjunky.net", "hilltopads.net", "a-ads.com", "adcash.com",
-            "ad-maven.com", "admaven.com", "clickadu.com", "monetag.com", "galaksion.com", "mgid.com",
-            "taboola.com", "outbrain.com", "revcontent.com", "bidvertiser.com", "highperformanceformat.com",
-            "profitabledisplaynetwork.com", "effectivegatecpm.com", "highcpmgate.com", "displayvertising.com",
-            "realsrv.com", "tsyndicate.com", "adnxs.com", "rubiconproject.com", "pubmatic.com",
-            "criteo.com", "criteo.net", "amazon-adsystem.com", "histats.com", "whos.amung.us",
-            "mc.yandex.ru", "dtscout.com", "pushnami.com", "richpush.co", "zeroredirect1.com",
-            "adsco.re", "adskeeper.com", "yllix.com", "popmyads.com", "clickaine.com", "aclib.net",
-            "acscdn.com", "lijit.com", "33across.com", "inpagepush.com", "pushub.net", "vidoomy.com",
-    };
-
     /**
      * WebView bez systémovej klávesnice. Vantra má v TV režime vlastnú klávesnicu
      * na obrazovke, takže WebView nikdy nevytvorí spojenie so systémovou
@@ -76,6 +59,9 @@ public class MainActivity extends Activity {
     private WebChromeClient.CustomViewCallback fullscreenCallback;
     private String appHost;
     private String bridgeScript = "";
+    // Reklamy: vstavaný zoznam hneď, veľký zoznam (assets/adhosts.txt) sa
+    // načíta na pozadí – požiadavky na reklamné domény sa vôbec nenačítajú
+    private AdBlocker adBlocker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +71,14 @@ public class MainActivity extends Activity {
 
         appHost = Uri.parse(BuildConfig.APP_URL).getHost();
         bridgeScript = readAsset("bridge.js");
+        adBlocker = new AdBlocker(appHost);
+        new Thread(() -> {
+            try (InputStream in = getAssets().open("adhosts.txt")) {
+                adBlocker.load(in);
+            } catch (Exception e) {
+                // chýba (lokálny build bez sťahovania) → len vstavaný zoznam
+            }
+        }, "vantra-adblock").start();
 
         rootLayout = new FrameLayout(this);
         webView = new TvWebView(this);
@@ -103,7 +97,7 @@ public class MainActivity extends Activity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         // Web podľa tohto spozná TV režim (vlastná klávesnica, ovládanie prehrávača)
-        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.4");
+        settings.setUserAgentString(settings.getUserAgentString() + " VantraTV/1.5");
 
         // Session cookie musí prežiť reštart appky
         CookieManager cookieManager = CookieManager.getInstance();
@@ -134,7 +128,7 @@ public class MainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String host = request.getUrl().getHost();
-                if (host != null && isAdHost(host)) {
+                if (adBlocker.isBlocked(host)) {
                     return new WebResourceResponse("text/plain", "utf-8",
                             new ByteArrayInputStream(new byte[0]));
                 }
@@ -211,13 +205,6 @@ public class MainActivity extends Activity {
         if (url == null) return false;
         String host = Uri.parse(url).getHost();
         return host != null && host.equals(appHost);
-    }
-
-    private static boolean isAdHost(String host) {
-        for (String ad : AD_HOSTS) {
-            if (host.equals(ad) || host.endsWith("." + ad)) return true;
-        }
-        return false;
     }
 
     private String readAsset(String name) {

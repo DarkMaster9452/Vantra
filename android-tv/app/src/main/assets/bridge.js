@@ -6,6 +6,8 @@
 //  - hlasitosť videí je zamknutá na 100 % a nedá sa stlmiť (hlasitosť rieši TV),
 //    ovládanie hlasitosti sa v prehrávačoch vôbec nezobrazuje
 //  - blokuje popupy / presmerovania z reklám (window.open, target=_blank, alert)
+//  - odstraňuje falošné „Confirm you're not a robot“ okná s QR kódom, ktorými
+//    reklamy prekrývajú video, a zastavené video pustí ďalej
 //  - Vantra stránka cez postMessage ovláda video vo vnorených iframoch
 //    (play/pauza/posun/titulky/klik na súradnice) a dostáva späť jeho stav
 //  - keď video beží, skryje celé UI prehrávača (tlačidlá, hlasitosť, stredové
@@ -59,6 +61,16 @@
     v.addEventListener('play', fix)
     v.addEventListener('playing', report)
     v.addEventListener('pause', report)
+    // Čo video zastavilo – používateľ, alebo reklama (falošné „robot“ okno)?
+    v.addEventListener('timeupdate', function () {
+      if (!v.paused) lastPlayingAt = Date.now()
+    })
+    v.addEventListener('playing', function () {
+      userPaused = false
+    })
+    v.addEventListener('pause', function () {
+      if (Date.now() < guardUntil && !userPaused && !v.ended) v.play().catch(function () {})
+    })
     v.addEventListener('ended', report)
     v.addEventListener('loadedmetadata', report)
     v.addEventListener('seeked', report)
@@ -394,9 +406,10 @@
   // visibility sa dedí, ale potomok si ju môže zapnúť späť – skryje sa
   // všetko okrem hlavného videa (v rámcoch po ceste okrem iframu k nemu).
   // DOM prehrávača sa nemení, takže sa nič nerozbije.
+  // Skrýva sa aj to, čo reklamy vložia mimo <body> (priamo do <html>)
   var CLEAN_CSS =
     'html,body{background:#000!important}' +
-    'body *{visibility:hidden!important}' +
+    'html>:not(head):not(body),html>:not(head) *{visibility:hidden!important}' +
     '[data-vantra-keep]{visibility:visible!important}' +
     'video::-webkit-media-controls,video::-webkit-media-controls-enclosure{display:none!important}' +
     'video::-webkit-media-text-track-container{display:none!important}'
@@ -482,14 +495,20 @@
     if (!v) return
     switch (data.action) {
       case 'play':
+        userPaused = false
         v.play().catch(function () {})
         break
       case 'pause':
+        userPaused = true
         v.pause()
         break
       case 'toggle':
+        userPaused = !v.paused
         if (v.paused) v.play().catch(function () {})
         else v.pause()
+        break
+      case 'resume':
+        resumeAfterScam(v)
         break
       case 'seek':
         v.currentTime = Math.max(0, Math.min(data.value, v.duration || data.value))
@@ -510,6 +529,187 @@
     }
   }
 
+  // ── Falošné „Confirm you're not a robot“ okná s QR kódom ───────────
+  // Reklamné siete v embed prehrávačoch každých pár minút prekryjú video
+  // „overením, že nie si robot“ s QR kódom (hlavne na TV, kde nemôžu otvoriť
+  // popup). Nie je to captcha, ale reklama / phishing – QR vedie na ich
+  // stránku. Okno sa hneď odstráni a video, ktoré zastavilo, hrá ďalej.
+  // Pravá captcha (reCAPTCHA „I'm not a robot“) QR kód nemá, tú nechávame.
+  var ROBOT_RE = /not\s+a\s+robot|nie\s+(?:ste|si)\s+robot|nejste\s+robot|nejsi\s+robot/i
+  var QR_TEXT_RE = /\bqr\b|scan\s+(?:the\s+|this\s+)?code|naskenuj/i
+  var QR_ATTR_RE = /(^|[^a-z])qr([^a-z]|$)/i
+  var NO_TEXT = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEMPLATE: 1 }
+  // Pauza z lišty Vantry vs. pauza od reklamy
+  var userPaused = false
+  var lastPlayingAt = 0
+  // Chvíľu po odstránení okna sa pauza od reklamy hneď vráti späť
+  var guardUntil = 0
+  // Shadow DOM (aj uzavretý) – reklama v ňom môže schovať overlay
+  var shadowRoots = []
+
+  if (!isTop) {
+    try {
+      var attachShadow = Element.prototype.attachShadow
+      if (attachShadow) {
+        Element.prototype.attachShadow = function () {
+          var root = attachShadow.apply(this, arguments)
+          if (shadowRoots.length > 300) {
+            shadowRoots = shadowRoots.filter(function (r) { return r.host.isConnected })
+          }
+          shadowRoots.push(root)
+          return root
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Rodič prvku, aj cez hranicu shadow DOM
+  function up(node) {
+    if (node.parentElement) return node.parentElement
+    var p = node.parentNode
+    return p && p.host ? p.host : null
+  }
+
+  // Shadow rooty, ktorých host je vnútri el (aj el sám)
+  function shadowsIn(el) {
+    return shadowRoots.filter(function (r) { return r.host.isConnected && el.contains(r.host) })
+  }
+
+  function textOf(el) {
+    var text = el.textContent || ''
+    shadowsIn(el).forEach(function (r) { text += ' ' + r.textContent })
+    return text
+  }
+
+  // Prvky s textom „not a robot“ (dokument + shadow DOM)
+  function robotTextElements() {
+    var out = []
+    var roots = [document.documentElement].concat(shadowRoots)
+    for (var r = 0; r < roots.length; r++) {
+      var root = roots[r]
+      if (!root || (root.host && !root.host.isConnected)) continue
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      var node
+      while ((node = walker.nextNode())) {
+        if (NO_TEXT[node.parentNode.nodeName] || !ROBOT_RE.test(node.data)) continue
+        var el = node.parentElement || root.host
+        if (el && out.indexOf(el) === -1) out.push(el)
+      }
+    }
+    return out
+  }
+
+  // Video a iframy, cez ktoré sa ide k videu (aj veľké, ktoré ešte nehlásili
+  // stav) – tie sa nikdy neodstránia
+  function guardedElements() {
+    var out = Array.prototype.slice.call(document.querySelectorAll('video'))
+    var area = window.innerWidth * window.innerHeight
+    var frames = document.querySelectorAll('iframe, frame')
+    for (var i = 0; i < frames.length; i++) {
+      var f = frames[i]
+      var r = f.getBoundingClientRect()
+      var leadsToVideo = false
+      for (var k in childFor) if (childFor[k] === f) leadsToVideo = true
+      if (leadsToVideo || r.width * r.height >= area * 0.5) out.push(f)
+    }
+    return out
+  }
+
+  // Celé okno aj s pozadím: najvyšší predok, ktorý ešte neobsahuje
+  // chránené video / iframe. null = okno sa nedá oddeliť od prehrávača.
+  function overlayRoot(el) {
+    var guarded = guardedElements().filter(function (g) { return g !== el })
+    for (var i = 0; i < guarded.length; i++) if (el.contains(guarded[i])) return null
+    var node = el
+    for (;;) {
+      if (node === document.body || node === document.documentElement) return null
+      var parent = up(node)
+      if (!parent || parent === document.body || parent === document.documentElement) return node
+      for (var j = 0; j < guarded.length; j++) if (parent.contains(guarded[j])) return node
+      node = parent
+    }
+  }
+
+  // QR kód: text „scan QR“, „qr“ v atribútoch, alebo veľký štvorcový
+  // obrázok / canvas / svg / pozadie
+  function hasQr(root) {
+    if (QR_TEXT_RE.test(textOf(root))) return true
+    var list = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*'), 0, 800))
+    shadowsIn(root).forEach(function (r) {
+      list = list.concat(Array.prototype.slice.call(r.querySelectorAll('*'), 0, 400))
+    })
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i]
+      var attrs = [el.getAttribute('src'), el.getAttribute('alt'), el.getAttribute('id'),
+        el.getAttribute('aria-label'), typeof el.className === 'string' ? el.className : el.getAttribute('class')].join(' ')
+      if (QR_ATTR_RE.test(attrs)) return true
+      var tag = el.tagName.toUpperCase()
+      var visual = tag === 'IMG' || tag === 'CANVAS' || tag === 'SVG' || tag === 'IFRAME' || tag === 'OBJECT'
+      if (!visual) {
+        var bg = getComputedStyle(el).backgroundImage
+        visual = !!bg && bg.indexOf('url(') !== -1
+      }
+      if (!visual) continue
+      var r = el.getBoundingClientRect()
+      var size = Math.max(r.width, r.height)
+      if (size >= 90 && Math.abs(r.width - r.height) <= size * 0.15) return true
+    }
+    return false
+  }
+
+  // Pustí len video, ktoré sa zastavilo práve teraz (spolu s oknom) –
+  // nie to, ktoré používateľ pauzol skôr
+  function resumeAfterScam(v) {
+    guardUntil = Date.now() + 4000
+    if (v && v.paused && !v.ended && !userPaused && Date.now() - lastPlayingAt < 3000) {
+      v.play().catch(function () {})
+    }
+  }
+
+  function removeScam(root) {
+    try { root.parentNode.removeChild(root) } catch (e) { return }
+    resumeAfterScam(mainVideo())
+    // Video môže byť vo vnorenom rámci
+    relayDown({ __vantra: 'cmd', action: 'resume' })
+  }
+
+  function sweepScam() {
+    if (!document.documentElement) return
+    var found = robotTextElements()
+    var removed = false
+    for (var i = 0; i < found.length; i++) {
+      if (!found[i].isConnected) continue
+      var root = overlayRoot(found[i])
+      if (root && hasQr(root)) {
+        removeScam(root)
+        removed = true
+      }
+    }
+    // Rámec, v ktorom nebolo nič iné než to okno (reklamný iframe) –
+    // rodič odstráni celý iframe, aby nezostal prázdny rámik nad videom
+    var body = document.body
+    if (!removed || !body || document.querySelector('video')) return
+    for (var c = 0; c < body.children.length; c++) {
+      if (!NO_TEXT[body.children[c].tagName] && !/^(LINK|META)$/.test(body.children[c].tagName)) return
+    }
+    try { window.parent.postMessage({ __vantra: 'scam', frame: frameId }, '*') } catch (e) {}
+  }
+
+  if (!isTop) {
+    var sweepQueued = false
+    var queueSweep = function () {
+      if (sweepQueued) return
+      sweepQueued = true
+      setTimeout(function () {
+        sweepQueued = false
+        sweepScam()
+      }, 120)
+    }
+    try {
+      new MutationObserver(queueSweep).observe(document, { childList: true, subtree: true })
+    } catch (e) {}
+  }
+
   if (!isTop) {
     window.addEventListener('message', function (e) {
       var data = e.data
@@ -522,6 +722,16 @@
         childFor[data.frame] = el
         if (cleanTarget === data.frame) keepOnly(el)
         try { window.parent.postMessage(data, '*') } catch (err) {}
+        return
+      }
+
+      // Reklamný iframe, v ktorom bolo len falošné „robot“ okno → preč s ním
+      if (data.__vantra === 'scam') {
+        var adFrame = e.source && e.source !== window ? frameElementFor(e.source) : null
+        if (!adFrame) return
+        for (var k in childFor) if (childFor[k] === adFrame) return
+        var adRoot = overlayRoot(adFrame)
+        if (adRoot) removeScam(adRoot)
         return
       }
 
@@ -560,6 +770,7 @@
     // čisté video sa preto drží na aktuálnom hlavnom videu)
     setInterval(function () {
       attachNoVolume() // stránka si mohla prepísať <head>
+      sweepScam() // aj zmeny v shadow DOM, ktoré MutationObserver nevidí
       var v = mainVideo()
       if (cleanTarget === frameId) keepOnly(v)
       if (!v) return
