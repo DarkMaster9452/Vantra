@@ -9,7 +9,12 @@ import path from 'node:path'
 export const dynamic = 'force-static'
 
 // Domény embed prehrávačov z /api/stream (aj s subdoménami)
-const PLAYER_HOSTS = ['vidlink.pro', 'vidfast.pro', 'videasy.net', 'multiembed.mov', 'embed.su', 'vidsrc.xyz', 'autoembed.cc', 'vidnest.fun']
+// + domény, na ktoré sa prehrávače presmerujú (vidfast.pro → vidfast.vc, videasy.net → videasy.to,
+// multiembed.mov → streamingnow.mov) – skript sa spúšťa len na @match doménach
+const PLAYER_HOSTS = [
+  'vidlink.pro', 'vidfast.pro', 'videasy.net', 'multiembed.mov', 'embed.su', 'vidsrc.xyz', 'autoembed.cc', 'vidnest.fun',
+  'vidfast.vc', 'videasy.to', 'streamingnow.mov',
+]
 
 export async function GET() {
   const bridge = await readFile(path.join(process.cwd(), 'android-tv/app/src/main/assets/bridge.js'), 'utf8')
@@ -18,7 +23,7 @@ export async function GET() {
     '// @name         Vantra – prehrávač bez hlasitosti',
     '// @namespace    https://github.com/DarkMaster9452/Vantra',
     // Pri zmene bridge.js zvýš spolu s verziou Android TV appky
-    '// @version      1.5',
+    '// @version      1.5.1',
     '// @description  V prehrávačoch Vantry skryje ovládanie hlasitosti (vždy 100 %), zablokuje popupy z reklám a falošné QR okná „not a robot“.',
     ...PLAYER_HOSTS.flatMap((host) => [`// @match        *://${host}/*`, `// @match        *://*.${host}/*`]),
     '// @run-at       document-start',
