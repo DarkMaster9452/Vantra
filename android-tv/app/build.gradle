@@ -3,7 +3,7 @@ plugins {
 }
 
 // URL nasadenej Vantry – pri builde sa dá prepísať: gradle assembleDebug -PvantraUrl="https://..."
-def vantraUrl = project.findProperty('vantraUrl') ?: 'https://vantra.vercel.app'
+def vantraUrl = project.findProperty('vantraUrl') ?: 'https://vantra-six.vercel.app'
 
 android {
     namespace 'sk.vantra.tv'

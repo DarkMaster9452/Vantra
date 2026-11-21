@@ -6,7 +6,7 @@ zobrazí ako normálna aplikácia s ikonou v launcheri.
 ## Ako získať APK
 
 1. Na GitHube otvor **Actions → Build Android TV APK → Run workflow**.
-2. Do poľa `app_url` zadaj URL svojej nasadenej Vantry (napr. `https://vantra.vercel.app`).
+2. Do poľa `app_url` zadaj URL svojej nasadenej Vantry (napr. `https://vantra-six.vercel.app`).
    Musí to byť finálna adresa (bez presmerovania na inú doménu) – appka z bezpečnosti
    nepustí hlavnú stránku na žiadnu inú doménu.
 3. Po dobehnutí buildu si zo stránky workflow runu stiahni artefakt **vantra-tv-apk**
